@@ -14,4 +14,6 @@ npx serve .
 
 ## Deploying
 
-This repo deploys to Netlify as a static site (see `netlify.toml`) — no build command, publish directory is the repo root.
+This repo is served directly by GitHub Pages from the `index.html` at the root — no build step. Live at:
+
+https://euanm55.github.io/d-lux-8/
