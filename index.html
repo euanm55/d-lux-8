@@ -223,6 +223,7 @@ input[type=range]::-webkit-slider-thumb {
 }
 .profile-card-name { font-family: 'Instrument Serif', serif; font-size: 18px; }
 .profile-card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.profile-default-tag { font-size: 10px; color: var(--amber); margin-top: 4px; }
 .reset-btn {
   font-size: 11px; color: var(--muted); border: 1px solid var(--border); background: none;
   border-radius: 6px; padding: 5px 9px; cursor: pointer; font-family: 'Inter', sans-serif; flex-shrink: 0;
@@ -1231,6 +1232,7 @@ function wireSettingsEvents(container, { findItem, save, onFilmStyleChange }) {
   container.querySelectorAll('.ps-select').forEach(el => {
     el.addEventListener('change', e => {
       const item = findItem(e.target.dataset.id), key = e.target.dataset.key;
+      if (!item) return; // item may have been removed/consumed (e.g. a preset swapped away) since this control was rendered
       item.settings[key] = e.target.value;
       save();
       if (key === 'filmStyle' && onFilmStyleChange) onFilmStyleChange();
@@ -1239,6 +1241,7 @@ function wireSettingsEvents(container, { findItem, save, onFilmStyleChange }) {
   container.querySelectorAll('.num-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       const item = findItem(e.target.dataset.id), key = e.target.dataset.key, num = +e.target.dataset.num;
+      if (!item) return;
       item.settings[key] = num;
       save();
       e.target.closest('.num-group').querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
@@ -1248,6 +1251,7 @@ function wireSettingsEvents(container, { findItem, save, onFilmStyleChange }) {
   container.querySelectorAll('.opt-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       const item = findItem(e.target.dataset.id), key = e.target.dataset.key, opt = e.target.dataset.opt;
+      if (!item) return;
       item.settings[key] = opt;
       save();
       e.target.closest('.opt-group').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
@@ -1280,10 +1284,12 @@ function renderProfiles() {
   profiles.forEach((profile, pi) => {
     const card = document.createElement('div');
     card.className = 'profile-card';
+    const isDefault = profile.name === PROFILE_DEFAULTS[pi].name;
+    const defaultTag = isDefault ? '' : `<div class="profile-default-tag">Factory default for this slot: ${esc(PROFILE_DEFAULTS[pi].name)}</div>`;
     let html = `<div class="profile-card-header">
       <div style="display:flex;align-items:center">
         <div class="profile-badge-num">${pi + 1}</div>
-        <div><div class="profile-card-name">${profile.name}</div><div class="profile-card-sub">${profile.subtitle}</div></div>
+        <div><div class="profile-card-name">${profile.name}</div><div class="profile-card-sub">${profile.subtitle}</div>${defaultTag}</div>
       </div>
       <button class="reset-btn" data-pi="${pi}">Reset</button>
     </div>`;
@@ -1304,7 +1310,7 @@ function renderProfiles() {
   container.querySelectorAll('.reset-btn').forEach(btn => {
     const pi = +btn.dataset.pi;
     wireConfirmButton(btn, 'Sure?', () => {
-      profiles[pi].settings = JSON.parse(JSON.stringify(PROFILE_DEFAULTS[pi].settings));
+      profiles[pi] = JSON.parse(JSON.stringify(PROFILE_DEFAULTS[pi]));
       saveProfiles(); renderProfiles(); showToast('Profile reset to defaults');
     });
   });
@@ -1349,6 +1355,7 @@ function renderPresets() {
   container.querySelectorAll('.preset-name-input').forEach(el => {
     el.addEventListener('change', e => {
       const preset = presets.find(p => p.id === e.target.dataset.id);
+      if (!preset) return; // preset may have been consumed by a Load-into swap since this input was rendered
       preset.name = e.target.value.trim() || 'Untitled preset';
       savePresets();
     });
@@ -1357,6 +1364,7 @@ function renderPresets() {
   container.querySelectorAll('.preset-sub-input').forEach(el => {
     el.addEventListener('change', e => {
       const preset = presets.find(p => p.id === e.target.dataset.id);
+      if (!preset) return;
       preset.subtitle = e.target.value.trim();
       savePresets();
     });
@@ -1368,15 +1376,26 @@ function renderPresets() {
       if (pi === '') return;
       const preset = presets.find(p => p.id === e.target.dataset.id);
       const idx = +pi;
-      if (confirm(`Load "${preset.name}" into User ${idx + 1}? This replaces the current User ${idx + 1} settings.`)) {
+      if (confirm(`Swap "${preset.name}" into User ${idx + 1}? Whatever's currently there ("${profiles[idx].name}") moves into Presets so it isn't lost.`)) {
+        const displaced = profiles[idx];
+        // The loaded preset moves out of the library and onto the camera slot;
+        // what it replaces moves the other way, so nothing is ever discarded.
+        presets = presets.filter(p => p.id !== preset.id);
+        presets.push({
+          id: 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          name: displaced.name,
+          subtitle: displaced.subtitle,
+          settings: JSON.parse(JSON.stringify(displaced.settings)),
+        });
         profiles[idx] = {
           ...profiles[idx],
           name: preset.name,
-          subtitle: preset.subtitle || profiles[idx].subtitle,
+          subtitle: preset.subtitle,
           settings: JSON.parse(JSON.stringify(preset.settings)),
         };
         saveProfiles();
-        showToast(`Loaded "${preset.name}" into User ${idx + 1}`);
+        savePresets();
+        showToast(`Swapped "${preset.name}" into User ${idx + 1}`);
       }
       e.target.value = '';
       renderPresets();
