@@ -1244,49 +1244,46 @@ function renderSettingsRows(settings, { entityId, isChangedFn }) {
   return html;
 }
 
-// Toggles the "changed" highlight on a field's row immediately after an edit,
-// rather than waiting for the next full re-render. `isFieldChanged(id, key, val)`
-// looks up the right item itself, since one container holds many cards/items.
-function updateChangedClass(controlEl, isFieldChanged, id, key, val) {
-  if (!isFieldChanged) return;
-  const row = controlEl.closest('.profile-row');
-  const keyEl = row && row.querySelector('.ps-key');
-  if (keyEl) keyEl.classList.toggle('changed', isFieldChanged(id, key, val));
+// Re-renders `renderFn` in place while preserving the scroll-area's scroll offset,
+// so a full re-render after every edit doesn't jump the page around.
+function rerenderPreservingScroll(renderFn) {
+  const scrollArea = document.querySelector('.scroll-area');
+  const top = scrollArea ? scrollArea.scrollTop : 0;
+  renderFn();
+  if (scrollArea) scrollArea.scrollTop = top;
 }
 
 // Wires the select/numeric/option controls rendered by renderSettingsRows() inside
 // `container`. `findItem(id)` must return the {settings} object matching that id.
-function wireSettingsEvents(container, { findItem, save, onFilmStyleChange, isFieldChanged }) {
+// Every edit triggers a full re-render via `onChange` — a targeted DOM patch here
+// (updating just the one row's "changed" class) proved unreliable in real-world
+// testing, so this always uses the render path that's known to be correct.
+function wireSettingsEvents(container, { findItem, save, onChange }) {
   container.querySelectorAll('.ps-select').forEach(el => {
     el.addEventListener('change', e => {
-      const id = e.target.dataset.id, item = findItem(id), key = e.target.dataset.key;
+      const item = findItem(e.target.dataset.id), key = e.target.dataset.key;
       if (!item) return; // item may have been removed/consumed (e.g. a preset swapped away) since this control was rendered
       item.settings[key] = e.target.value;
       save();
-      if (key === 'filmStyle' && onFilmStyleChange) onFilmStyleChange();
-      else updateChangedClass(e.target, isFieldChanged, id, key, e.target.value);
+      rerenderPreservingScroll(onChange);
     });
   });
   container.querySelectorAll('.num-btn').forEach(btn => {
     btn.addEventListener('click', e => {
-      const id = e.target.dataset.id, item = findItem(id), key = e.target.dataset.key, num = +e.target.dataset.num;
+      const item = findItem(e.target.dataset.id), key = e.target.dataset.key, num = +e.target.dataset.num;
       if (!item) return;
       item.settings[key] = num;
       save();
-      e.target.closest('.num-group').querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      updateChangedClass(e.target, isFieldChanged, id, key, num);
+      rerenderPreservingScroll(onChange);
     });
   });
   container.querySelectorAll('.opt-btn').forEach(btn => {
     btn.addEventListener('click', e => {
-      const id = e.target.dataset.id, item = findItem(id), key = e.target.dataset.key, opt = e.target.dataset.opt;
+      const item = findItem(e.target.dataset.id), key = e.target.dataset.key, opt = e.target.dataset.opt;
       if (!item) return;
       item.settings[key] = opt;
       save();
-      e.target.closest('.opt-group').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      updateChangedClass(e.target, isFieldChanged, id, key, opt);
+      rerenderPreservingScroll(onChange);
     });
   });
 }
@@ -1335,8 +1332,7 @@ function renderProfiles() {
   wireSettingsEvents(container, {
     findItem: id => profiles[+id],
     save: saveProfiles,
-    onFilmStyleChange: renderProfiles,
-    isFieldChanged: (id, key, val) => String(val) !== String(profiles[+id].defaultSettings[key]),
+    onChange: renderProfiles,
   });
 
   container.querySelectorAll('.reset-btn').forEach(btn => {
@@ -1385,11 +1381,7 @@ function renderPresets() {
   wireSettingsEvents(container, {
     findItem: id => presets.find(p => p.id === id),
     save: savePresets,
-    onFilmStyleChange: renderPresets,
-    isFieldChanged: (id, key, val) => {
-      const p = presets.find(pp => pp.id === id);
-      return p ? String(val) !== String(p.defaultSettings[key]) : false;
-    },
+    onChange: renderPresets,
   });
 
   container.querySelectorAll('.preset-name-input').forEach(el => {
