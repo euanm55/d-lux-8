@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>D-Lux 8</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #141414;
+  --surface: #1e1e1e;
+  --surface2: #272727;
+  --surface3: #303030;
+  --border: #333;
+  --text: #f0f0f0;
+  --muted: #888;
+  --dim: #555;
+  --red: #c0392b;
+  --amber: #d4873a;
+  --green: #27ae60;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* HEADER */
+.app-header {
+  padding: 14px 18px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.header-dot { width: 8px; height: 8px; background: var(--red); border-radius: 50%; flex-shrink: 0; }
+.header-title { font-family: 'Instrument Serif', serif; font-size: 20px; }
+.header-sub { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-left: auto; }
+
+/* TABS */
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab {
+  flex: 1; padding: 10px 4px; text-align: center;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--red); }
+
+/* SCROLL */
+.scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.tab-panel { display: none; padding: 16px; }
+.tab-panel.active { display: block; }
+
+/* SECTION LABELS */
+.section-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px; margin-top: 20px;
+}
+.section-label:first-child { margin-top: 0; }
+
+/* TOGGLE */
+.toggle-group { display: flex; background: var(--surface); border-radius: 8px; padding: 3px; gap: 3px; margin-bottom: 4px; }
+.toggle-btn {
+  flex: 1; padding: 9px 8px; text-align: center; font-size: 13px; font-weight: 400;
+  border-radius: 6px; cursor: pointer; transition: all 0.15s; color: var(--muted);
+  border: none; background: none; font-family: 'Inter', sans-serif;
+}
+.toggle-btn.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+
+/* SLIDER */
+.slider-wrap { margin-bottom: 4px; }
+.slider-labels { position: relative; display: flex; justify-content: space-between; margin-bottom: 6px; height: 16px; }
+.slider-label-l, .slider-label-r { font-size: 11px; color: var(--muted); line-height: 16px; }
+.slider-value {
+  position: absolute; left: 0; right: 0; text-align: center;
+  font-size: 11px; color: var(--text); font-weight: 500; line-height: 16px;
+  pointer-events: none;
+}
+input[type=range] { width: 100%; -webkit-appearance: none; height: 3px; background: var(--border); border-radius: 2px; outline: none; }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 22px; height: 22px; background: var(--text);
+  border-radius: 50%; cursor: pointer; border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--border);
+}
+
+/* LIGHT CONTEXT NOTE */
+.light-note {
+  font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.5;
+  padding: 8px 10px; background: var(--surface); border-radius: 7px; border-left: 2px solid var(--border);
+  display: none;
+}
+.light-note.visible { display: block; }
+
+/* SUBJECT GRID */
+.subject-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.subj-btn {
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 11px 10px; cursor: pointer; transition: all 0.15s; text-align: left;
+}
+.subj-btn.active { border-color: var(--text); background: var(--surface2); }
+.subj-icon { font-size: 18px; margin-bottom: 5px; display: block; }
+.subj-name { font-size: 12px; font-weight: 500; display: block; }
+.subj-sub { font-size: 11px; color: var(--muted); display: block; margin-top: 1px; }
+.subj-btn.active .subj-sub { color: #aaa; }
+
+/* FEEL GRID */
+.feel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.feel-card {
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 12px 11px; cursor: pointer; transition: all 0.15s;
+}
+.feel-card.active { border-color: var(--text); background: var(--surface2); }
+.feel-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.feel-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.feel-card.active .feel-desc { color: #aaa; }
+
+/* BW */
+.bw-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+}
+.bw-label { font-size: 13px; }
+.bw-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.switch {
+  width: 44px; height: 26px; background: var(--border); border-radius: 13px;
+  position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+}
+.switch.on { background: var(--red); }
+.switch::after {
+  content: ''; position: absolute; width: 20px; height: 20px; background: white;
+  border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s;
+}
+.switch.on::after { transform: translateX(18px); }
+.bw-type-row { display: none; margin-bottom: 8px; }
+.bw-type-row.visible { display: block; }
+
+/* FORMAT */
+.format-note { font-size: 11px; color: var(--amber); margin-top: 5px; line-height: 1.5; display: none; }
+.format-note.visible { display: block; }
+
+/* GENERATE BTN */
+.gen-btn {
+  width: 100%; background: var(--red); color: white; border: none; border-radius: 10px;
+  padding: 14px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; margin-top: 20px; letter-spacing: 0.02em; transition: opacity 0.15s;
+}
+.gen-btn:active { opacity: 0.8; }
+
+/* RECIPE OUTPUT */
+.recipe-output { margin-top: 20px; }
+.recipe-header { margin-bottom: 14px; }
+.recipe-title { font-family: 'Instrument Serif', serif; font-size: 24px; }
+.recipe-context { font-size: 11px; color: var(--muted); margin-top: 3px; font-style: italic; }
+.recipe-badge {
+  display: inline-block; margin-top: 6px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+}
+.recipe-badge.jpg { background: #1e1608; border-color: #4a380a; color: var(--amber); }
+
+/* PROFILE MATCH */
+.profile-match {
+  background: #182218; border: 1px solid #2a3f2a; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
+}
+.pm-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #4e8a4e; margin-bottom: 5px; }
+.pm-name { font-size: 14px; font-weight: 500; color: #8fcc8f; margin-bottom: 4px; }
+.pm-deltas { font-size: 12px; color: #6e8e6e; line-height: 1.7; }
+.pm-deltas .dv { color: #aee8ae; font-weight: 500; }
+
+/* SETTINGS BLOCKS */
+.settings-block { background: var(--surface); border-radius: 10px; overflow: hidden; margin-bottom: 10px; border: 1px solid var(--border); }
+.settings-block-header {
+  background: var(--surface2); padding: 8px 13px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border);
+}
+.setting-row { display: flex; align-items: flex-start; padding: 10px 13px; border-bottom: 1px solid var(--border); gap: 10px; }
+.setting-row:last-child { border-bottom: none; }
+.setting-key { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; width: 94px; flex-shrink: 0; padding-top: 2px; }
+.setting-val-wrap { flex: 1; }
+.setting-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text); }
+.setting-why { font-size: 11px; color: var(--dim); margin-top: 4px; line-height: 1.45; }
+
+/* TIPS */
+.tips-block { background: #131320; border: 1px solid #252538; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.tips-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #5a5a9a; margin-bottom: 10px; }
+.tip-item { font-size: 12px; color: #b8b8cc; line-height: 1.65; padding-left: 14px; position: relative; margin-bottom: 12px; }
+.tip-item:last-child { margin-bottom: 0; }
+.tip-item::before { content: '–'; position: absolute; left: 0; color: var(--dim); }
+.tip-item em { font-style: italic; color: #d0d0e0; }
+
+/* POST NOTE */
+.post-note { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.post-note-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-bottom: 5px; }
+.post-note-text { font-size: 12px; color: var(--muted); line-height: 1.55; }
+
+/* PROFILES TAB */
+.profile-intro { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.55; }
+.profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+.profile-card-header {
+  padding: 13px 14px; background: var(--surface2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.profile-badge-num {
+  width: 26px; height: 26px; background: var(--red); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: white; margin-right: 10px; flex-shrink: 0;
+}
+.profile-card-name { font-family: 'Instrument Serif', serif; font-size: 18px; }
+.profile-card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.reset-btn {
+  font-size: 11px; color: var(--muted); border: 1px solid var(--border); background: none;
+  border-radius: 6px; padding: 5px 9px; cursor: pointer; font-family: 'Inter', sans-serif; flex-shrink: 0;
+}
+.reset-btn:active { background: var(--border); }
+.ps-section { padding: 6px 14px; font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); background: var(--bg); border-bottom: 1px solid var(--border); }
+.profile-row { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); gap: 10px; min-height: 46px; }
+.profile-row:last-child { border-bottom: none; }
+.ps-key { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; width: 88px; flex-shrink: 0; }
+.ps-key.changed { color: #c9a84c; }
+.ps-control { flex: 1; }
+.ps-na { font-size: 12px; color: var(--dim); font-style: italic; }
+
+/* SELECT */
+.ps-select {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 7px 28px 7px 9px; font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 400; width: 100%; appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+}
+.ps-select:focus { outline: none; border-color: var(--dim); }
+
+/* NUMERIC BUTTONS */
+.num-group { display: flex; gap: 4px; }
+.num-btn {
+  flex: 1; padding: 8px 2px; border: 1px solid var(--border); background: none;
+  border-radius: 5px; color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; text-align: center; transition: all 0.1s; min-height: 36px;
+}
+.num-btn.active { background: var(--surface2); color: var(--text); border-color: var(--dim); font-weight: 500; }
+
+/* OPTION BUTTONS */
+.opt-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.opt-btn {
+  padding: 7px 10px; border: 1px solid var(--border); background: none; border-radius: 5px;
+  color: var(--muted); font-size: 12px; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.1s;
+}
+.opt-btn.active { background: var(--surface2); color: var(--text); border-color: var(--dim); font-weight: 500; }
+
+/* ASK TAB */
+.ask-context-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.6; }
+.ask-context-pill strong { color: #aaa; font-weight: 500; }
+.ask-examples { font-size: 11px; color: var(--dim); margin-bottom: 14px; line-height: 1.7; }
+.ask-examples span { color: #777; }
+.ask-textarea {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 12px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 300;
+  color: var(--text); resize: none; outline: none; line-height: 1.5;
+}
+.ask-textarea:focus { border-color: var(--dim); }
+.ask-btn {
+  width: 100%; background: var(--red); color: white; border: none; border-radius: 10px;
+  padding: 14px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; margin-top: 10px; transition: opacity 0.15s; letter-spacing: 0.02em;
+}
+.ask-btn:active { opacity: 0.8; }
+.ask-btn.copied { background: var(--green); }
+.ask-steps { margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: none; }
+.ask-steps.visible { display: block; }
+.ask-steps-title { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--green); margin-bottom: 10px; }
+.ask-step { font-size: 13px; color: #bbb; margin-bottom: 8px; padding-left: 20px; position: relative; line-height: 1.5; }
+.ask-step .sn { position: absolute; left: 0; color: var(--muted); font-weight: 600; font-size: 12px; }
+.ask-preview { margin-top: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 11px; color: var(--dim); line-height: 1.6; max-height: 120px; overflow: hidden; position: relative; }
+.ask-preview::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(transparent, var(--bg)); }
+
+/* SETTINGS RESET TIP */
+.settings-persist-tip {
+  background: #1a1510; border: 1px solid #3a2e18; border-radius: 8px; padding: 10px 12px;
+  font-size: 11px; color: #9a7f4a; line-height: 1.6; margin-bottom: 16px;
+}
+.settings-persist-tip strong { color: #c9a84c; font-weight: 500; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 100; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-dot"></div>
+  <div class="header-title">D-Lux 8</div>
+  <div class="header-sub">Settings Advisor</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="recipe">Recipe</div>
+  <div class="tab" data-tab="profiles">My Profiles</div>
+  <div class="tab" data-tab="ask">Ask</div>
+</div>
+
+<div class="scroll-area">
+
+  <!-- RECIPE TAB -->
+  <div class="tab-panel active" id="tab-recipe">
+
+    <div class="section-label">Location</div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" data-group="location" data-val="outdoors">Outdoors</button>
+      <button class="toggle-btn" data-group="location" data-val="indoors">Indoors</button>
+    </div>
+
+    <div class="section-label" style="margin-top:16px;">Light</div>
+    <div class="slider-wrap">
+      <div class="slider-labels">
+        <span class="slider-label-l">Night</span>
+        <span class="slider-value" id="light-label">Overcast</span>
+        <span class="slider-label-r">Harsh sun</span>
+      </div>
+      <input type="range" id="light-slider" min="0" max="6" value="3" step="1">
+    </div>
+    <div class="light-note" id="light-note"></div>
+
+    <div class="section-label" style="margin-top:16px;">Subject</div>
+    <div class="subject-grid">
+      <button class="subj-btn" data-val="scene"><span class="subj-icon">🏞️</span><span class="subj-name">Scene / place</span><span class="subj-sub">No people, or distant</span></button>
+      <button class="subj-btn" data-val="adults"><span class="subj-icon">🧍</span><span class="subj-name">Adults</span><span class="subj-sub">Posed or relaxed</span></button>
+      <button class="subj-btn active" data-val="family"><span class="subj-icon">👨‍👩‍👦</span><span class="subj-name">Family / group</span><span class="subj-sub">Mixed, some movement</span></button>
+      <button class="subj-btn" data-val="kid-active"><span class="subj-icon">🏃</span><span class="subj-name">Active kids</span><span class="subj-sub">Running, playing</span></button>
+      <button class="subj-btn" data-val="animals"><span class="subj-icon">🦁</span><span class="subj-name">Animals</span><span class="subj-sub">Zoo, wildlife, pets</span></button>
+      <button class="subj-btn" data-val="street"><span class="subj-icon">🚶</span><span class="subj-name">Street / crowd</span><span class="subj-sub">People in passing</span></button>
+    </div>
+
+    <div class="section-label" style="margin-top:16px;">Look & feel</div>
+    <div class="feel-grid" id="feel-grid"></div>
+
+    <div class="section-label" style="margin-top:16px;">Black & white</div>
+    <div class="bw-row">
+      <div><div class="bw-label">Shoot in B&W</div><div class="bw-sub">Overrides colour feel above</div></div>
+      <div class="switch" id="bw-switch"></div>
+    </div>
+    <div class="bw-type-row" id="bw-type-row">
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-group="bwtype" data-val="everyday">Everyday</button>
+        <button class="toggle-btn" data-group="bwtype" data-val="edgy">High Contrast / Graphic</button>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:16px;">Format</div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" data-group="format" data-val="dng">DNG + JPG</button>
+      <button class="toggle-btn" data-group="format" data-val="jpg">JPG only</button>
+    </div>
+    <div class="format-note" id="format-note">JPG only — the camera's processing is your final image. Get exposure right in camera; there's no raw file to recover from.</div>
+
+    <button class="gen-btn" id="gen-btn">Generate settings</button>
+    <div class="recipe-output" id="recipe-output"></div>
+    <div style="height:30px;"></div>
+  </div>
+
+  <!-- PROFILES TAB -->
+  <div class="tab-panel" id="tab-profiles">
+    <div class="settings-persist-tip">
+      <strong>Camera resets profiles when it powers off.</strong> Before shooting, load the recommended profile and make the changes shown in the Recipe tab. Keep this app open for reference.
+    </div>
+    <p class="profile-intro">Your three saved camera profiles. Update if you change them on the camera.</p>
+    <div id="profiles-container"></div>
+    <div style="height:30px;"></div>
+  </div>
+
+  <!-- ASK TAB -->
+  <div class="tab-panel" id="tab-ask">
+    <div class="ask-context-pill">Describe your scene below. Tap <strong>Copy prompt</strong> — then paste into Claude. Your camera setup and all three profiles are included automatically.</div>
+    <div class="ask-examples">Try: <span>"Son is running at the beach, harsh sun, lots of glare from the sand — how do I handle exposure?"</span> · <span>"Getting blur on indoor shots, what's wrong?"</span> · <span>"Just moved from bright sun into shaded seating — what do I adjust quickly?"</span></div>
+    <textarea class="ask-textarea" id="ask-textarea" rows="4" placeholder="e.g. At a zoo, animals behind glass, son nearby, overcast day…"></textarea>
+    <button class="ask-btn" id="ask-submit">Copy prompt</button>
+    <div id="ask-response-area"></div>
+    <div style="height:30px;"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── FEELS ─────────────────────────────────────────────────────────────────
+const FEELS = [
+  { id:'tonal',    name:'Tonal',
+    desc:'Rich colour on darker foundations. Highlights protected, shadows that stay shadows, nothing boosted. The look you\'ve been working towards.',
+    filmStyle:'Standard', contrast:0,  sharpness:0, saturation:0,  highlights:-1, shadows:0, noiseReduction:'Standard', idr:'Auto', expComp:null, wb:null },
+  { id:'crisp',     name:'Crisp',
+    desc:'Strong edge definition, deep blacks, fine textures visible. Rich but realistic colour. Precise and premium.',
+    filmStyle:'Standard', contrast:0,  sharpness:0, saturation:0,  highlights:-1, shadows:0, noiseReduction:'Standard', idr:'Auto', expComp:null, wb:null },
+  { id:'vibrant',   name:'Vibrant',
+    desc:'Colour is the dominant characteristic. Blues, greens and warm tones carry energy. Alive, optimistic, memorable.',
+    filmStyle:'Vivid',    contrast:0,  sharpness:0, saturation:1,  highlights:-1, shadows:0, noiseReduction:'Standard', idr:'Auto', expComp:null, wb:null },
+  { id:'luminous',  name:'Luminous',
+    desc:'Built around beautiful light. Bright areas radiant, shadows open and soft. Light is the subject.',
+    filmStyle:'Standard', contrast:0,  sharpness:0, saturation:0,  highlights:0,  shadows:1, noiseReduction:'Standard', idr:'Auto', expComp:'+0.3 EV', wb:'Cloudy' },
+  { id:'soft',      name:'Soft',
+    desc:'Gentle rendering, smooth tonal transitions. Highlights roll off gradually, shadows open. Warm and flattering.',
+    filmStyle:'Natural',  contrast:-1, sharpness:0, saturation:0,  highlights:0,  shadows:1, noiseReduction:'Standard', idr:'Auto', expComp:null, wb:null },
+  { id:'moody',     name:'Moody',
+    desc:'Darker and atmospheric. Blacks rich and substantial. Colours restrained, light directional. Weighty and charged.',
+    filmStyle:'Standard', contrast:0,  sharpness:0, saturation:-1, highlights:-1, shadows:-1, noiseReduction:'Standard', idr:'Off',  expComp:'-0.3 EV', wb:null },
+  { id:'cinematic', name:'Cinematic',
+    desc:'A frame from a film. Colour grading deliberate, atmosphere helps tell the story. Strong sense of place and moment.',
+    filmStyle:'Standard', contrast:0,  sharpness:0, saturation:0,  highlights:-2, shadows:0, noiseReduction:'Standard', idr:'Low',  expComp:'-0.3 EV', wb:null },
+  { id:'nordic',    name:'Nordic',
+    desc:'Cool natural light, muted colour, clean tonality. Blues, greys, earth tones. Fresh, quiet, uncluttered.',
+    filmStyle:'Natural',  contrast:0,  sharpness:0, saturation:-2, highlights:0,  shadows:1, noiseReduction:'Standard', idr:'Low',  expComp:null, wb:null },
+];
+
+// ── PROFILE DEFAULTS (new from document) ──────────────────────────────────
+const PROFILE_DEFAULTS = [
+  {
+    id:'u1', name:'Everyday Colour', subtitle:'Family · travel · streets · general life',
+    settings:{ mode:'A', isoMax:'3200', minShutter:'1/250', afMode:'AFs', afArea:'Field AF', metering:'Multi-Field',
+      filmStyle:'Standard', contrast:0, sharpness:0, saturation:0, highlights:-1, shadows:0,
+      noiseReduction:'Standard', idr:'Auto', wb:'AWB', ois:'On', shutterType:'Mechanical', capture:'JPG only' }
+  },
+  {
+    id:'u2', name:'Moving Subjects', subtitle:'Active kids · animals · action',
+    settings:{ mode:'A', isoMax:'3200', minShutter:'1/500', afMode:'AFc', afArea:'Large Field AF', metering:'Multi-Field',
+      filmStyle:'Standard', contrast:0, sharpness:0, saturation:0, highlights:-1, shadows:0,
+      noiseReduction:'Standard', idr:'Auto', wb:'AWB', ois:'On', shutterType:'Mechanical', capture:'JPG only' }
+  },
+  {
+    id:'u3', name:'Monochrome', subtitle:'Documentary · strong light · graphic',
+    settings:{ mode:'A', isoMax:'6400', minShutter:'1/250', afMode:'AFs', afArea:'Field AF', metering:'Multi-Field',
+      filmStyle:'Monochrome HC', contrast:0, sharpness:0, saturation:null, highlights:-1, shadows:0,
+      noiseReduction:'Low', idr:'Low', wb:'AWB', ois:'On', shutterType:'Mechanical', capture:'JPG only' }
+  }
+];
+
+// ── PROFILE FIELD DEFINITIONS ─────────────────────────────────────────────
+const PROFILE_SECTIONS = [
+  { label:'Exposure', fields:[
+    { key:'mode',       label:'Mode',        type:'select',  options:['A','S','P','M'] },
+    { key:'isoMax',     label:'ISO Max',     type:'select',  options:['800','1600','3200','6400','12800'] },
+    { key:'minShutter', label:'Min Shutter', type:'select',  options:['1/60','1/100','1/125','1/160','1/200','1/250','1/320','1/500','1/1000'] },
+  ]},
+  { label:'Focus', fields:[
+    { key:'afMode',   label:'AF Mode',   type:'select', options:['AFs','AFc','MF'] },
+    { key:'afArea',   label:'AF Area',   type:'select', options:['Field AF','Large Field AF','Zone AF','Spot AF','Face/Eye Detection','Tracking'] },
+    { key:'metering', label:'Metering',  type:'select', options:['Multi-Field','Centre-Weighted','Spot'] },
+  ]},
+  { label:'Image', fields:[
+    { key:'filmStyle',      label:'Film Style', type:'select',  options:['Standard','Natural','Vivid','Monochrome','Monochrome HC','Cinelike D2','Cinelike V2'] },
+    { key:'contrast',       label:'Contrast',   type:'numeric' },
+    { key:'sharpness',      label:'Sharpness',  type:'numeric' },
+    { key:'saturation',     label:'Saturation', type:'numeric', hideIfMono:true },
+    { key:'highlights',     label:'Highlights', type:'numeric' },
+    { key:'shadows',        label:'Shadows',    type:'numeric' },
+    { key:'noiseReduction', label:'Noise Red.', type:'options', options:['Low','Standard','High'] },
+    { key:'idr',            label:'iDR',        type:'options', options:['Off','Low','Auto'] },
+  ]},
+  { label:'Other', fields:[
+    { key:'wb',          label:'White Bal.',  type:'select', options:['AWB','Cloudy','Daylight','Shade','Tungsten','Fluorescent','Flash'] },
+    { key:'ois',         label:'OIS',         type:'options', options:['On','Off'] },
+    { key:'shutterType', label:'Shutter',     type:'options', options:['Hybrid','Mechanical','Electronic'] },
+    { key:'capture',     label:'Capture',     type:'options', options:['DNG + JPG','JPG only'] },
+  ]},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+// Light levels: 0=Night, 1=Very low, 2=Low light, 3=Overcast (default/centre), 4=Shade, 5=Bright day, 6=Harsh sun
+let profiles = JSON.parse(localStorage.getItem('dlux8v5_profiles') || 'null')
+  || JSON.parse(JSON.stringify(PROFILE_DEFAULTS));
+
+const state = { location:'outdoors', light:3, subject:'family', feel:'tonal', bw:false, bwtype:'everyday', format:'dng' };
+const lightLabels = ['Night / Dim','Very low','Low light','Overcast','Shade','Bright day','Harsh sun'];
+const lightNotes = [
+  'Almost no ambient light — candles, street lamps, dark interiors. Requires wide open aperture and highest ISO.', // 0 night
+  'Dim interior, twilight, heavy cloud in evening. Little light available — ISO will climb.', // 1 very low
+  'Low but workable — a dimly lit room with window light, dusk outdoors, deep overcast.', // 2 low
+  'Soft, even light — classic Scottish overcast. No harsh shadows, faces are naturally flattering.', // 3 overcast
+  'Open shade: sheltered from direct sun, lit by reflected sky. Cooler and softer than direct sun — excellent for portraits.', // 4 shade
+  'Direct daylight — strong contrast, watch for shadows on faces. Fast shutter easy to achieve.', // 5 bright
+  'Direct overhead sun — deep shadows, blown highlights. Move into shade or dial in negative exposure comp.' // 6 harsh
+];
+
+function saveProfiles() { localStorage.setItem('dlux8v5_profiles', JSON.stringify(profiles)); }
+
+// ── BUILD FEEL GRID ───────────────────────────────────────────────────────
+const feelGrid = document.getElementById('feel-grid');
+FEELS.forEach(f => {
+  const card = document.createElement('div');
+  card.className = 'feel-card' + (f.id === state.feel ? ' active' : '');
+  card.dataset.feel = f.id;
+  card.innerHTML = `<div class="feel-name">${f.name}</div><div class="feel-desc">${f.desc}</div>`;
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.feel-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    state.feel = f.id;
+  });
+  feelGrid.appendChild(card);
+});
+
+// ── UI SYNC ───────────────────────────────────────────────────────────────
+function syncAllUI() {
+  document.querySelectorAll('.toggle-btn[data-group="location"]').forEach(b => b.classList.toggle('active', b.dataset.val === state.location));
+  document.querySelectorAll('.toggle-btn[data-group="format"]').forEach(b => b.classList.toggle('active', b.dataset.val === state.format));
+  const ls = document.getElementById('light-slider');
+  ls.value = state.light;
+  document.getElementById('light-label').textContent = lightLabels[state.light];
+  updateLightNote(state.light);
+  document.querySelectorAll('.subj-btn').forEach(b => b.classList.toggle('active', b.dataset.val === state.subject));
+  document.querySelectorAll('.feel-card').forEach(c => c.classList.toggle('active', c.dataset.feel === state.feel));
+  document.getElementById('bw-switch').classList.toggle('on', state.bw);
+  document.getElementById('bw-type-row').classList.toggle('visible', state.bw);
+  document.getElementById('format-note').classList.toggle('visible', state.format === 'jpg');
+}
+
+function updateLightNote(light) {
+  const note = document.getElementById('light-note');
+  const txt = lightNotes[light];
+  note.textContent = txt;
+  note.classList.toggle('visible', txt.length > 0);
+}
+
+// ── CONTROLS ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab, .tab-panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'profiles') renderProfiles();
+    document.querySelector('.scroll-area').scrollTop = 0;
+  });
+});
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const g = btn.dataset.group;
+    document.querySelectorAll(`.toggle-btn[data-group="${g}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (g === 'location') state.location = btn.dataset.val;
+    if (g === 'bwtype')   state.bwtype   = btn.dataset.val;
+    if (g === 'format') {
+      state.format = btn.dataset.val;
+      document.getElementById('format-note').classList.toggle('visible', state.format === 'jpg');
+    }
+  });
+});
+
+document.querySelectorAll('.subj-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.subj-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.subject = btn.dataset.val;
+  });
+});
+
+document.getElementById('light-slider').addEventListener('input', e => {
+  state.light = parseInt(e.target.value);
+  document.getElementById('light-label').textContent = lightLabels[state.light];
+  updateLightNote(state.light);
+});
+
+document.getElementById('bw-switch').addEventListener('click', () => {
+  state.bw = !state.bw;
+  document.getElementById('bw-switch').classList.toggle('on', state.bw);
+  document.getElementById('bw-type-row').classList.toggle('visible', state.bw);
+});
+
+// ── RECIPE ENGINE ─────────────────────────────────────────────────────────
+function generateRecipe() {
+  const { location, light, subject, feel, bw, bwtype, format } = state;
+
+  const isIndoors = location === 'indoors';
+
+  // Light levels: 0=Night, 1=Very low, 2=Low light, 3=Overcast, 4=Shade, 5=Bright, 6=Harsh
+  const isNight    = light === 0;
+  const isVeryLow  = light === 1;
+  const isLow      = light === 2;
+  const isOvercast = light === 3;
+  const isShade    = light === 4;
+  const isBright   = light === 5;
+  const isHarsh    = light === 6;
+  const isDim      = light <= 1;          // night or very low — both need max ISO
+  const isDimOrLow = light <= 2;          // night, very low, or low light
+
+  // ── INDOOR LIGHT REALITY ──────────────────────────────────────────────
+  // Indoors, the available light is roughly one stop lower than the outdoor level.
+  // Overcast outside → low light inside. Bright outside → overcast-equivalent inside.
+  // This is encoded as an effective light level used for exposure decisions.
+  const effectiveLight = isIndoors ? Math.max(0, light - 1) : light;
+  const effIsNight     = effectiveLight === 0;
+  const effIsDim       = effectiveLight <= 1;
+  const effIsDimOrLow  = effectiveLight <= 2;
+  const effIsOvercast  = effectiveLight === 3;
+  const effIsBright    = effectiveLight >= 4;
+
+  const hasKid     = subject === 'kid-active';
+  const hasAnimal  = subject === 'animals';
+  const isMoving   = hasKid || hasAnimal;  // subjects that may move fast
+  const hasPeople  = subject !== 'scene';
+  const isFamily   = subject === 'family';
+  const isStreet   = subject === 'street';
+  const isScene    = subject === 'scene';
+  const isAdults   = subject === 'adults';
+  const jpgOnly    = format === 'jpg';
+
+  // ── EXPOSURE ──────────────────────────────────────────────────────────
+  let mode = 'A (Aperture Priority)', aperture, shutterFloor, isoMax;
+  let shutterNote = '', aperNote = '';
+
+  if (isMoving) {
+    // Active kids or animals — speed is everything
+    // Use effective light to factor in how dark it actually is indoors
+    if (effIsDim) {
+      shutterFloor = '1/250';
+      isoMax = 'Auto, max 6400';
+      aperture = 'f/1.7';
+      shutterNote = 'Very limited light — 1/250 is as fast as you can safely go here. Open to f/1.7 and let ISO climb to match.';
+    } else if (effIsDimOrLow) {
+      shutterFloor = '1/250';
+      isoMax = 'Auto, max 6400';
+      aperture = 'f/1.7 – f/2.0';
+      shutterNote = 'Low light indoors with a moving subject — 1/250 minimum. Push to 1/500 if you\'re still getting blur and let ISO compensate.';
+    } else {
+      shutterFloor = '1/500';
+      isoMax = 'Auto, max 6400';
+      aperture = 'f/1.7 – f/2.8';
+      shutterNote = '1/500 freezes movement reliably. Let ISO climb to whatever is needed — sharp at ISO 6400 beats blurry at ISO 800.';
+    }
+  } else if (effIsNight || effIsDim) {
+    // Night outdoors, or very dim indoors
+    shutterFloor = '1/125';
+    isoMax = 'Auto, max 6400';
+    aperture = 'f/1.7';
+    shutterNote = '1/125 is the slowest safe handheld shutter. Below this, camera shake creates blur that has nothing to do with subject movement.';
+    aperNote = 'f/1.7 is maximum aperture — maximum light. At close range this gives very shallow depth of field; focus accuracy matters.';
+    if (isIndoors && !isNight) {
+      shutterNote = `Indoors with ${lightLabels[light].toLowerCase()} outside — effective light is much lower than it looks. 1/125 minimum, open wide, let ISO work.`;
+    }
+  } else if (effIsDimOrLow) {
+    // Low light: dim-but-usable indoors (e.g. indoors + overcast), or outdoors low
+    shutterFloor = '1/125';
+    isoMax = 'Auto, max 3200';
+    aperture = 'f/1.7 – f/2.0';
+    if (isIndoors) {
+      shutterNote = `Indoors with ${lightLabels[light].toLowerCase()} outside — the window light is limited. 1/125 minimum shutter; open up to f/1.7–f/2.0.`;
+    }
+  } else if (isShade && !isIndoors) {
+    // Shade outdoors: good light, no direct sun
+    shutterFloor = '1/250';
+    isoMax = 'Auto, max 1600';
+    aperture = isScene ? 'f/4 – f/5.6' : 'f/2.0 – f/4';
+    aperNote = isScene ? '' : 'Shade gives soft, even light — you don\'t need to open wide. f/2 to f/4 gives good depth of field without losing sharpness.';
+  } else if (isBright) {
+    shutterFloor = '1/250';
+    isoMax = 'Auto, max 1600';
+    if (isIndoors) {
+      // Bright outside → good window light indoors
+      aperture = isScene ? 'f/2.8 – f/4' : 'f/1.7 – f/2.8';
+      aperNote = isScene ? '' : 'Good window light — you can open wide for subject separation or stop down slightly for the group.';
+    } else {
+      aperture = isScene ? 'f/5.6 – f/8' : 'f/4 – f/5.6';
+      aperNote = isScene ? 'Stopped down for maximum sharpness and depth of field.' : 'Bright light lets you stop down — better depth of field for groups, sharper across the frame.';
+    }
+  } else if (isHarsh) {
+    if (isIndoors) {
+      // Harsh outside = very good window light indoors
+      shutterFloor = '1/250';
+      isoMax = 'Auto, max 800';
+      aperture = 'f/2.8 – f/4';
+      aperNote = 'Strong sun outside means excellent window light. You can stop down more than usual — try f/4 for groups.';
+    } else {
+      shutterFloor = '1/500';
+      isoMax = 'Auto, max 800';
+      aperture = isScene ? 'f/5.6 – f/8' : 'f/4 – f/5.6';
+      shutterNote = 'Plenty of light — fast shutter is easy to achieve without pushing ISO.';
+      aperNote = 'Stopped down for depth of field and cleaner images in bright conditions.';
+    }
+  } else {
+    // Overcast outdoors (or indoors + very bright outside, which effective light handles above)
+    if (isIndoors) {
+      // Indoors + overcast = low-ish window light
+      shutterFloor = '1/125';
+      isoMax = 'Auto, max 3200';
+      aperture = 'f/1.7 – f/2.0';
+      shutterNote = 'Overcast outside means limited window light indoors. 1/125 minimum and open up to f/1.7–f/2.';
+    } else {
+      shutterFloor = '1/250';
+      isoMax = 'Auto, max 1600';
+      aperture = isScene ? 'f/4 – f/5.6' : 'f/1.7 – f/2.8';
+    }
+  }
+
+  // ── AF ────────────────────────────────────────────────────────────────
+  let afMode, afArea, metering;
+
+  if (hasKid || hasAnimal) {
+    afMode = 'AFc';
+    afArea = 'Tracking';
+    metering = 'Multi-Field';
+  } else if (isAdults) {
+    afMode = 'AFs';
+    afArea = 'Face/Eye Detection';
+    metering = 'Centre-Weighted';
+  } else if (isFamily) {
+    afMode = 'AFs';
+    afArea = 'Face/Eye Detection';
+    metering = 'Multi-Field';
+  } else if (isStreet) {
+    afMode = 'AFc';
+    afArea = 'Field AF';
+    metering = 'Multi-Field';
+  } else {
+    // Scene
+    afMode = 'AFs';
+    afArea = 'Field AF';
+    metering = 'Multi-Field';
+  }
+
+  // No burst — user prefers single shot
+  let drive = isMoving
+    ? 'Single — focus on timing. Half-press to lock, full press when the moment arrives.'
+    : 'Single';
+
+  // ── WHITE BALANCE ────────────────────────────────────────────────────
+  const feelData = FEELS.find(f => f.id === feel);
+  let wb;
+  if (bw) {
+    wb = 'AWB (colour irrelevant in mono)';
+  } else if (feelData && feelData.wb) {
+    wb = feelData.wb;
+  } else if (isNight || effIsDim) {
+    wb = 'AWB or Tungsten';
+  } else if (isHarsh && !isIndoors) {
+    wb = 'Daylight';
+  } else if (isShade && !isIndoors) {
+    wb = 'Shade — corrects the cool blue cast from sky overhead';
+  } else if (isIndoors) {
+    wb = 'AWB';
+  } else {
+    wb = 'Cloudy (adds warmth to Scottish light)';
+  }
+
+  // ── EXPOSURE COMPENSATION ─────────────────────────────────────────────
+  // Core philosophy: default -0.3 EV for tonal weight, except where overridden
+  let expComp;
+  if (feelData && feelData.expComp && !bw) {
+    expComp = feelData.expComp;  // Feel overrides (moody=-0.3, luminous=+0.3, cinematic=-0.3)
+  } else if (isNight || isDim) {
+    expComp = '0 to +0.3 EV — avoid pushing highlights in very dark scenes';
+  } else if (isHarsh && !isIndoors) {
+    expComp = '−0.3 EV default; −0.7 EV on sand or water (they fool the meter into underexposing)';
+  } else if (isBright && !isIndoors) {
+    expComp = '−0.3 EV — protects highlights, keeps tonal weight';
+  } else if (isShade && !isIndoors) {
+    expComp = '0 EV — shade is balanced; trust the meter. Add +0.3 EV if faces look dark against a bright background';
+  } else if (isOvercast && !isIndoors) {
+    expComp = '−0.3 EV — slight underexposure preserves tonal structure in soft light';
+  } else if (isIndoors && effIsBright) {
+    expComp = '0 to −0.3 EV — good window light; watch for bright windows in frame';
+  } else {
+    expComp = '0 EV';
+  }
+
+  // ── IMAGE PROFILE ─────────────────────────────────────────────────────
+  let filmStyle, contrast, sharpness, saturation, highlights, shadows, noiseReduction, idr;
+
+  if (bw) {
+    if (bwtype === 'edgy') {
+      filmStyle = 'Monochrome HC'; contrast = 0; sharpness = 0; saturation = null;
+      highlights = -1; shadows = 0; noiseReduction = 'Low'; idr = 'Off';
+    } else {
+      filmStyle = 'Monochrome'; contrast = 0; sharpness = 0; saturation = null;
+      highlights = -1; shadows = 0; noiseReduction = 'Low'; idr = 'Low';
+    }
+  } else {
+    // Start from profiles' base (Standard, 0, 0, 0, -1, 0) and layer feel on top
+    filmStyle = feelData.filmStyle;
+    // The profile defaults are already 0s — feels adjust from that base
+    contrast   = feelData.contrast;
+    sharpness  = feelData.sharpness;
+    saturation = feelData.saturation;
+    highlights = feelData.highlights;
+    shadows    = feelData.shadows;
+    idr        = feelData.idr;
+    noiseReduction = feelData.noiseReduction;
+
+    // In harsh sun, additional highlight protection
+    if (isHarsh) {
+      highlights = Math.min(highlights, -1);
+      if (idr === 'Off') idr = 'Low';  // some recovery in very bright light
+    }
+
+    // JPG only: bump NR in genuinely dark conditions
+    if (jpgOnly && (isNight || isDim)) noiseReduction = 'High';
+    else if (jpgOnly && effIsDimOrLow) noiseReduction = 'Standard';
+  }
+
+  // Format the values for display (numeric → string with sign)
+  const fv = v => (v === null || v === undefined || v === 'N/A') ? 'N/A' : (typeof v === 'number' ? (v > 0 ? `+${v}` : `${v}`) : v);
+
+  const whys = {
+    filmStyle: filmStyleWhy(filmStyle),
+    noiseReduction: jpgOnly
+      ? ((isNight || isDim) ? 'Higher NR — very dark scene, no raw file to manage grain later, smooth it in-camera'
+         : effIsDimOrLow ? 'Standard NR — limited light indoors, camera will produce some grain; no raw to fix it'
+         : 'Standard — JPG only, let the camera process cleanly')
+      : 'Standard — keeps texture while avoiding harsh grain. Adjust on the DNG in post if needed.',
+    idr: idrWhy(idr),
+  };
+
+  const profileMatch = matchProfile({ subject, feel, bw, bwtype, shutterFloor, afMode, light, isShade, isBright, isHarsh, isOvercast });
+  const tips = buildTips({ location, light, subject, feel, bw, bwtype, jpgOnly, isNight, isDim, isDimOrLow, isOvercast, isShade, isBright, isHarsh, isIndoors, effIsDim, effIsDimOrLow, hasKid, hasAnimal, isMoving, hasPeople, isStreet });
+  const postNote = buildPostNote(feel, bw, jpgOnly);
+
+  return { mode, aperture, shutterFloor, isoMax, shutterNote, aperNote, afMode, afArea, metering, drive,
+    wb, expComp, filmStyle, contrast: fv(contrast), sharpness: fv(sharpness),
+    saturation: fv(saturation), highlights: fv(highlights), shadows: fv(shadows),
+    noiseReduction, idr: fv(idr),
+    whys, profileMatch, tips, postNote, bw, bwtype, feel, format };
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function filmStyleWhy(s) {
+  const map = {
+    'Natural':       'Gentle tone curve — faithful colour, flattering on skin, slightly lower contrast than Standard',
+    'Standard':      'Balanced all-rounder — slightly more punch than Natural; fits the tonal weight you like from base zero',
+    'Vivid':         'Maximum colour saturation — reserve for bright, colourful conditions where it earns it',
+    'Monochrome':    'Smooth tonal B&W — forgiving range, preserves shadow detail; good for everyday B&W',
+    'Monochrome HC': 'High contrast B&W — deeper blacks, more graphic quality; suits strong light and shadow',
+    'Cinelike D2':   'Flat/log profile — for heavy colour grading. JPG will look washed out straight from camera',
+    'Cinelike V2':   'Flat/log profile — designed for significant post-processing',
+  };
+  return map[s] || '';
+}
+
+function idrWhy(v) {
+  const map = {
+    'Off':  'Off — no tonal intervention, preserves deep blacks. Important for Moody and high-contrast B&W',
+    'Low':  'Gentle highlight recovery — pulls back highlights without lifting shadows or flattening contrast',
+    'Auto': 'Auto — lifts shadows and recovers highlights in mixed or unpredictable light. Good safety net',
+  };
+  return map[String(v)] || map[v] || '';
+}
+
+// ── PROFILE MATCH ─────────────────────────────────────────────────────────
+function matchProfile({ subject, feel, bw, bwtype, shutterFloor, afMode, light, isShade, isBright, isHarsh, isOvercast }) {
+  const fmt = v => `<span class="dv">${v}</span>`;
+  const isMoving = subject === 'kid-active' || subject === 'animals';
+
+  if (bw) {
+    // Profile 3 — Monochrome
+    const deltas = [];
+    if (bwtype === 'edgy') {
+      deltas.push(`Already set to ${fmt('Monochrome HC')} — no film style change needed`);
+      if (isHarsh || isBright) deltas.push(`iDR → ${fmt('Off')} (preserve blacks)`);
+    } else {
+      deltas.push(`Film Style → ${fmt('Monochrome')} (switch from HC)`);
+      deltas.push(`iDR → ${fmt('Low')}`);
+      deltas.push(`Shadows → ${fmt('0')}`);
+    }
+    if (shutterFloor === '1/500') deltas.push(`Min Shutter → ${fmt('1/500')}`);
+    return { name: profiles[2].name, desc: 'Start from your Monochrome profile:', deltas };
+  }
+
+  if (isMoving) {
+    // Profile 2 — Moving Subjects
+    const deltas = [];
+    const feelData = FEELS.find(f => f.id === feel);
+    if (feelData && feelData.filmStyle !== 'Standard') deltas.push(`Film Style → ${fmt(feelData.filmStyle)}`);
+    if (feelData && feelData.saturation !== 0) deltas.push(`Saturation → ${fmt(feelData.saturation > 0 ? '+'+feelData.saturation : feelData.saturation)}`);
+    if (feelData && feelData.highlights !== -1) deltas.push(`Highlights → ${fmt(feelData.highlights > 0 ? '+'+feelData.highlights : feelData.highlights)}`);
+    if (feelData && feelData.shadows !== 0) deltas.push(`Shadows → ${fmt(feelData.shadows > 0 ? '+'+feelData.shadows : feelData.shadows)}`);
+    if (feelData && feelData.idr !== 'Auto') deltas.push(`iDR → ${fmt(feelData.idr)}`);
+    if (feelData && feelData.expComp) deltas.push(`Exp Comp → ${fmt(feelData.expComp)}`);
+    if (subject === 'animals') deltas.push(`AF Area → ${fmt('Tracking')}`);
+    return { name: profiles[1].name, desc: 'Start from your Moving Subjects profile:', deltas };
+  }
+
+  // Profile 1 — Everyday Colour (default)
+  const f = FEELS.find(x => x.id === feel);
+  const deltas = [];
+  if (f) {
+    if (f.filmStyle !== 'Standard')       deltas.push(`Film Style → ${fmt(f.filmStyle)}`);
+    if (f.contrast  !== 0)                deltas.push(`Contrast → ${fmt(f.contrast > 0 ? '+'+f.contrast : f.contrast)}`);
+    if (f.saturation !== 0)               deltas.push(`Saturation → ${fmt(f.saturation > 0 ? '+'+f.saturation : f.saturation)}`);
+    if (f.highlights !== -1)              deltas.push(`Highlights → ${fmt(f.highlights > 0 ? '+'+f.highlights : f.highlights)}`);
+    if (f.shadows !== 0)                  deltas.push(`Shadows → ${fmt(f.shadows > 0 ? '+'+f.shadows : f.shadows)}`);
+    if (f.idr !== 'Auto')                 deltas.push(`iDR → ${fmt(f.idr)}`);
+    if (f.expComp)                        deltas.push(`Exp Comp → ${fmt(f.expComp)}`);
+    if (isHarsh || isBright)             deltas.push(`Exp Comp → ${fmt('−0.3 EV')} (protect highlights)`);
+  }
+  if (subject === 'adults')              deltas.push(`AF Area → ${fmt('Face/Eye Detection')}`);
+  if (subject === 'family')              deltas.push(`AF Area → ${fmt('Face/Eye Detection')}`);
+  if (subject === 'street')              deltas.push(`AF Mode → ${fmt('AFc')}`, `AF Area → ${fmt('Field AF')}`);
+  if (shutterFloor === '1/125')          deltas.push(`Min Shutter → ${fmt('1/125')}`);
+
+  // Deduplicate
+  const seen = new Set();
+  const uniqueDeltas = deltas.filter(d => { const k = d.replace(/<[^>]+>/g,''); if (seen.has(k)) return false; seen.add(k); return true; });
+
+  return { name: profiles[0].name, desc: 'Start from your Everyday Colour profile:', deltas: uniqueDeltas };
+}
+
+// ── TIPS ──────────────────────────────────────────────────────────────────
+function buildTips({ location, light, subject, feel, bw, bwtype, jpgOnly, isNight, isDim, isDimOrLow, isOvercast, isShade, isBright, isHarsh, isIndoors, effIsDim, effIsDimOrLow, hasKid, hasAnimal, isMoving, hasPeople, isStreet }) {
+  const tips = [];
+
+  if (hasKid) {
+    tips.push('Half-press the shutter to lock focus before the key moment, then fire when it arrives. This is more reliable than shooting continuously and hoping for a sharp frame.');
+    tips.push('At 1/500, blur is almost impossible. If shots are still soft, the problem is focus, not shutter speed — check that the AF indicator is locked and green before you fire. Missed focus looks similar to motion blur but has a different fix.');
+    tips.push('Get low. Children photographed from adult height look small and disconnected. Drop to their eye level — crouch, kneel, or hold the camera at hip height using the rear screen. It transforms the relationship in the frame.');
+    if (effIsDimOrLow || isIndoors) {
+      tips.push('Don\'t be conservative with ISO indoors or in dim light. A sharp image at ISO 6400 is far better than a blurry one at ISO 800. Grain is workable; motion blur is not. Let the ISO go where it needs to go.');
+    }
+  }
+
+  if (hasAnimal) {
+    tips.push('Animals are unpredictable — pre-focus on where you expect movement using AFc and Tracking. Tap the screen to set the tracking point before the moment arrives. Keep the camera up and ready rather than lowering it between shots.');
+    tips.push('At zoo distances, f/2.8 gives enough depth of field to get the whole animal sharp without losing too much background separation. If shooting through glass or bars, use the widest aperture — f/1.7 — to throw the foreground out of focus.');
+    if (isHarsh || isBright) {
+      tips.push('Strong sun creates flat, harsh light on animals. Look for shaded enclosures or wait until clouds pass. Animals in shade with a bright background behind them often need a touch of positive exposure compensation — the meter will try to expose for the bright background.');
+    }
+  }
+
+  if (isNight || effIsDim) {
+    tips.push('At f/1.7 and typical portrait distances, the zone of sharp focus is very thin — sometimes just a few centimetres. Face/Eye detection keeps the camera locked to what matters. Take 3–4 shots of each moment; even slight movement shifts the focus plane.');
+    tips.push('To steady yourself at slow shutter speeds: pull your elbows in against your chest, take a breath, exhale slowly, then press gently. Don\'t stab the shutter button. This physical steadiness can make the difference between sharp and soft at 1/125.');
+    tips.push('At ISO 3200–6400 you will see grain. This is normal and can look atmospheric, especially in B&W or Cinematic. The D-Lux 8 handles high ISO well — the grain has a film quality rather than looking digital. Work with it.');
+    tips.push('Warm orange artificial light can produce subtly green skin tones with AWB. If something looks off, switch white balance to Tungsten — it neutralises the cast and gives cleaner skin.');
+  } else if (effIsDimOrLow && isIndoors) {
+    tips.push('Overcast outside means limited window light — more than a dark room, but not a lot. Stay near windows, open to f/1.7–f/2, and let ISO rise to 1600–3200 as needed. This is normal indoor shooting light in Scotland.');
+    tips.push('Check your first frame carefully. If faces look soft, it\'s usually focus at wide aperture rather than motion blur. Face/Eye detection helps significantly here — it locks to eyes rather than the nose or forehead.');
+  }
+
+  if (isShade && !isIndoors) {
+    tips.push('Shade light is reflected sky light — cooler and bluer than direct sun. Set white balance to Shade to correct the cast. If Shade feels too warm, Cloudy is a softer correction. AWB will often overcorrect and leave faces slightly cool.');
+    tips.push('Moving from direct sun into shade is a significant light change. The camera will re-meter but check the first frame — especially if there\'s a bright background visible. You may need +0.3 EV to lift faces against the brightness behind them.');
+    tips.push('Shade gives beautiful, even, directionless light — ideal for portraits. Position your subject facing outward toward the open sky (not toward a wall) and the light wraps around faces naturally.');
+  }
+
+  if (isHarsh && !isIndoors) {
+    tips.push('Harsh overhead sun is genuinely bad portrait light — deep shadows under eyes and noses, squinting subjects. The practical fix: move into open shade, position subjects facing outward toward open sky. The light becomes beautiful immediately.');
+    tips.push('Sand, snow and bright water fool the metering system into underexposing — the camera sees all that brightness and compensates. Dial in +0.3 to +0.7 EV and check the histogram. Push right without clipping the whites.');
+    tips.push('iDR on Low quietly lifts shadows and recovers highlight detail. If the sky is still blowing out, try bumping iDR to Auto — but also consider dialling in more negative exposure compensation. Don\'t rely on both simultaneously.');
+  }
+
+  if (isOvercast && !isIndoors) {
+    tips.push('Scottish overcast is genuinely excellent light — soft, even, no harsh shadows on faces. You don\'t need to think about where the light is coming from. Focus on the moment and the expression; the light handles itself.');
+  }
+
+  if (isDimOrLow && !isIndoors && !isNight && !isDim) {
+    tips.push('Low outdoor light — overcast evenings, early morning, heavy cloud — is often the most beautiful light for photography. It\'s soft, shadowless, flattering on faces. Open to f/1.7, let the ISO climb, and you\'ll often get your best results in this kind of weather.');
+  }
+
+  if (isStreet) {
+    tips.push('Street and crowd photography rewards pre-focus: set your focus to a fixed distance that fits the scene — roughly 2m for tight shots, 5m for wider — and shoot without waiting for AF confirmation. This is faster and more reliable than letting the camera hunt.');
+    tips.push('People in public move through unpredictably. Set up a composition and wait for someone to walk into it, rather than chasing. This produces more considered, less hectic frames.');
+  }
+
+  // Feel-specific tips
+  if (!bw) {
+    if (feel === 'cinematic') {
+      tips.push('Cinematic is built to be finished in edit. The JPG is a reference, not your final image. Open the DNG, lift shadows gently, then add a subtle colour grade. That\'s where the atmosphere comes together.');
+      tips.push('The −0.3 EV is intentional — slightly weighted shadows feel grounded and atmospheric. Only add positive exposure compensation if a face is genuinely too dark to read.');
+    }
+    if (feel === 'vibrant') {
+      tips.push('Vibrant earns itself in bright, saturated conditions — blue sky, deep greens, colourful scenes. In flat or overcast light, the saturation push can look unnatural. If the sky is grey, Tonal or Nordic will serve you better.');
+    }
+    if (feel === 'luminous') {
+      tips.push('Luminous needs something to work with — golden hour, misty mornings, light through windows, haze. In flat midday light it has nothing to amplify. Chase the quality of light first; the settings follow.');
+      tips.push('+0.3 EV is deliberate — it gives bright areas a radiant quality. Check the histogram and aim right-of-centre without clipping whites. If highlights blink on playback, return to 0 EV.');
+    }
+    if (feel === 'moody') {
+      tips.push('Moody punishes poor exposure in either direction. Check the histogram after the first frame. Deep blacks are part of the look; completely crushed detail with no separation is not.');
+      tips.push('This look earns itself with a single directional light source: a window in a dark room, a street lamp, sun cutting through a doorway. Flat, even light makes it look merely dark rather than atmospheric.');
+    }
+    if (feel === 'nordic') {
+      tips.push('Nordic is suited to Scottish conditions — the cool, flat illumination is exactly right. For best results, try WB Daylight rather than Cloudy; it prevents the camera warming the image and keeps the pale, understated quality intact.');
+    }
+    if (feel === 'soft') {
+      tips.push('Soft thrives in gentle, wrapping light — window light, open shade, overcast outdoors. Strong directional light fights the low-contrast intention. Let the light do the character work; the settings follow it.');
+    }
+    if (feel === 'crisp') {
+      tips.push('Diffused light — Scottish overcast or open shade — brings out fine textures in hair, fabric and stone without harsh shadows. The sharpness is set neutral and Standard handles it cleanly.');
+    }
+  }
+
+  if (bw) {
+    if (bwtype === 'edgy') {
+      tips.push('High Contrast Monochrome rewards scenes where form and shadow do the work — strong architectural lines, harsh light on simple subjects, faces in raking light. Colour matters less; tonal structure is everything.');
+      tips.push('Grain at ISO 3200+ in HC mono looks like classic documentary film. Some of the most powerful B&W photographs were made on grainy, contrasty film. Let the camera climb to whatever ISO it needs and embrace the result.');
+    } else {
+      tips.push('Without colour to separate elements, composition works with tone and shape. Before shooting, ask: would areas that look different in colour merge into the same grey? Sometimes they do. Move slightly or change angle to create tonal separation.');
+      tips.push('Everyday Monochrome suits scenes where texture tells the story — skin, fabric, stone, water. These render well in a smooth B&W curve. Faces are particularly flattering in smooth mono.');
+    }
+  }
+
+  if (jpgOnly) {
+    tips.push('You\'re shooting JPG only — what the camera produces is what you keep. After your first frame, check the histogram on playback. Spike at the right edge means blown highlights: dial in −0.3 EV. Image too dark overall: add +0.3 EV. There\'s no DNG to fix it later.');
+  }
+
+  return tips;
+}
+
+// ── POST NOTE ─────────────────────────────────────────────────────────────
+function buildPostNote(feel, bw, jpgOnly) {
+  if (jpgOnly) return 'This is your final image — what the camera produces is what you keep. Review the histogram before moving on. If highlights are blinking or clipped, reduce exposure by −0.3 EV. If the image is too dark, add +0.3 EV.';
+  if (bw) return 'The DNG stores full colour data even when shooting in Monochrome mode — you can always convert it back to colour in post. The B&W JPG is your reference for tone and composition.';
+  const notes = {
+    tonal:     'Your JPG should be close to final. This is the look you\'ve been working toward — tonal weight, protected highlights, nothing lifted. Use the DNG only if you need to fine-tune exposure or pull back white balance slightly.',
+    crisp:     'The rendering is clean and controlled from JPG. Use the DNG if a highlight has just clipped — Standard base gives you room to recover.',
+    vibrant:   'Vibrant JPGs are typically ready as shot. Use the DNG if colour channels have clipped in bright sun — reds and blues are the most likely culprits.',
+    luminous:  'Luminous benefits from a small edit: open the DNG and lift overall exposure by +0.1–0.2 EV if needed, then add a very soft warm tint to shadows to reinforce the radiant quality.',
+    soft:      'Soft is gentle by design. If you want more dimension, open the DNG and add a modest contrast boost and a touch of warmth — just enough to keep it from feeling flat.',
+    moody:     'Moody is designed to work from JPG. The deep blacks are the look. Use the DNG only if you want to selectively recover shadow detail in one specific area — don\'t lift too much or the atmosphere dissolves.',
+    cinematic: 'Cinematic is meant to be finished in post. Open the DNG: lift shadows gently, consider a subtle colour grade — warm shadows, slight teal highlights — and pull highlights down. The atmosphere comes together in the grade.',
+    nordic:    'Nordic JPG is close to complete. To take it further: open the DNG and add a very slight cool tint to shadows, and consider pulling saturation one more notch. A gentle texture boost on stone or fabric surfaces emphasises what the look is built around.',
+  };
+  return notes[feel] || 'Your DNG is available for any post-processing adjustments.';
+}
+
+// ── RENDER RECIPE ─────────────────────────────────────────────────────────
+function renderRecipe() {
+  const r = generateRecipe();
+  let feelName;
+  if (r.bw) { feelName = r.bwtype === 'edgy' ? 'High Contrast B&W' : 'Monochrome'; }
+  else { feelName = FEELS.find(f => f.id === r.feel)?.name || r.feel; }
+
+  const badge = r.format === 'jpg'
+    ? '<span class="recipe-badge jpg">JPG only</span>'
+    : '<span class="recipe-badge">DNG + JPG</span>';
+
+  const lightLbl = lightLabels[state.light];
+
+  let html = `<div class="recipe-header">
+    <div class="recipe-title">${feelName}</div>
+    <div class="recipe-context">${lightLbl} · ${state.location} · ${subjectLabel(state.subject)}</div>
+    ${badge}
+  </div>`;
+
+  // Profile match
+  const pm = r.profileMatch;
+  html += `<div class="profile-match"><div class="pm-label">Profile match</div><div class="pm-name">${pm.name} — ${pm.desc}</div>`;
+  html += pm.deltas.length === 0
+    ? `<div class="pm-deltas">No changes needed — your saved profile works as-is.</div>`
+    : `<div class="pm-deltas">${pm.deltas.join(' · ')}</div>`;
+  html += `</div>`;
+
+  // Exposure
+  html += `<div class="settings-block"><div class="settings-block-header">Exposure</div>
+    <div class="setting-row"><div class="setting-key">Mode</div><div class="setting-val-wrap"><div class="setting-val">${r.mode}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Aperture</div><div class="setting-val-wrap"><div class="setting-val">${r.aperture}</div>${r.aperNote ? `<div class="setting-why">${r.aperNote}</div>` : ''}</div></div>
+    <div class="setting-row"><div class="setting-key">Min Shutter</div><div class="setting-val-wrap"><div class="setting-val">${r.shutterFloor}</div>${r.shutterNote ? `<div class="setting-why">${r.shutterNote}</div>` : ''}</div></div>
+    <div class="setting-row"><div class="setting-key">ISO</div><div class="setting-val-wrap"><div class="setting-val">${r.isoMax}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Exp Comp</div><div class="setting-val-wrap"><div class="setting-val">${r.expComp}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Metering</div><div class="setting-val-wrap"><div class="setting-val">${r.metering}</div></div></div>
+  </div>`;
+
+  // Focus
+  html += `<div class="settings-block"><div class="settings-block-header">Focus & Drive</div>
+    <div class="setting-row"><div class="setting-key">AF Mode</div><div class="setting-val-wrap"><div class="setting-val">${r.afMode}</div></div></div>
+    <div class="setting-row"><div class="setting-key">AF Area</div><div class="setting-val-wrap"><div class="setting-val">${r.afArea}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Drive</div><div class="setting-val-wrap"><div class="setting-val">${r.drive}</div></div></div>
+  </div>`;
+
+  // Image profile
+  html += `<div class="settings-block"><div class="settings-block-header">Image Profile</div>
+    <div class="setting-row"><div class="setting-key">Film Style</div><div class="setting-val-wrap"><div class="setting-val">${r.filmStyle}</div><div class="setting-why">${r.whys.filmStyle}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Contrast</div><div class="setting-val-wrap"><div class="setting-val">${r.contrast}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Sharpness</div><div class="setting-val-wrap"><div class="setting-val">${r.sharpness}</div></div></div>
+    ${!r.bw ? `<div class="setting-row"><div class="setting-key">Saturation</div><div class="setting-val-wrap"><div class="setting-val">${r.saturation}</div></div></div>` : ''}
+    <div class="setting-row"><div class="setting-key">Highlights</div><div class="setting-val-wrap"><div class="setting-val">${r.highlights}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Shadows</div><div class="setting-val-wrap"><div class="setting-val">${r.shadows}</div></div></div>
+    <div class="setting-row"><div class="setting-key">Noise Red.</div><div class="setting-val-wrap"><div class="setting-val">${r.noiseReduction}</div><div class="setting-why">${r.whys.noiseReduction}</div></div></div>
+    <div class="setting-row"><div class="setting-key">iDR</div><div class="setting-val-wrap"><div class="setting-val">${r.idr}</div><div class="setting-why">${r.whys.idr}</div></div></div>
+  </div>`;
+
+  // Other
+  html += `<div class="settings-block"><div class="settings-block-header">Other</div>
+    <div class="setting-row"><div class="setting-key">White Bal.</div><div class="setting-val-wrap"><div class="setting-val">${r.wb}</div></div></div>
+    <div class="setting-row"><div class="setting-key">OIS</div><div class="setting-val-wrap"><div class="setting-val">On</div></div></div>
+    <div class="setting-row"><div class="setting-key">Shutter</div><div class="setting-val-wrap"><div class="setting-val">Mechanical</div></div></div>
+    <div class="setting-row"><div class="setting-key">Capture</div><div class="setting-val-wrap"><div class="setting-val">${r.format === 'jpg' ? 'JPG only' : 'DNG + JPG'}</div></div></div>
+  </div>`;
+
+  // Tips
+  if (r.tips.length > 0) {
+    html += `<div class="tips-block"><div class="tips-label">Tips for this situation</div>`;
+    r.tips.forEach(t => { html += `<div class="tip-item">${t}</div>`; });
+    html += `</div>`;
+  }
+
+  // Post note
+  html += `<div class="post-note"><div class="post-note-label">After shooting</div><div class="post-note-text">${r.postNote}</div></div>`;
+
+  document.getElementById('recipe-output').innerHTML = html;
+  document.querySelector('.scroll-area').scrollTop = 0;
+}
+
+function subjectLabel(s) {
+  return {
+    'scene': 'Scene / place', 'adults': 'Adults', 'family': 'Family / group',
+    'kid-active': 'Active kids', 'animals': 'Animals', 'street': 'Street / crowd'
+  }[s] || s;
+}
+
+document.getElementById('gen-btn').addEventListener('click', renderRecipe);
+
+// ── RENDER PROFILES ───────────────────────────────────────────────────────
+function renderProfiles() {
+  const container = document.getElementById('profiles-container');
+  container.innerHTML = '';
+
+  profiles.forEach((profile, pi) => {
+    const isMono = ['Monochrome','Monochrome HC','Cinelike D2','Cinelike V2'].includes(profile.settings.filmStyle);
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+
+    let html = `<div class="profile-card-header">
+      <div style="display:flex;align-items:center">
+        <div class="profile-badge-num">${pi + 1}</div>
+        <div><div class="profile-card-name">${profile.name}</div><div class="profile-card-sub">${profile.subtitle}</div></div>
+      </div>
+      <button class="reset-btn" data-pi="${pi}">Reset</button>
+    </div>`;
+
+    PROFILE_SECTIONS.forEach(section => {
+      html += `<div class="ps-section">${section.label}</div>`;
+      section.fields.forEach(field => {
+        const val = profile.settings[field.key];
+        if (field.hideIfMono && isMono) {
+          html += `<div class="profile-row"><div class="ps-key">${field.label}</div><div class="ps-control"><span class="ps-na">N/A — Monochrome</span></div></div>`;
+          return;
+        }
+        const defaultVal = PROFILE_DEFAULTS[pi].settings[field.key];
+        const isChanged = String(val) !== String(defaultVal);
+        let control = '';
+        if (field.type === 'select') {
+          const opts = field.options.map(o => `<option value="${o}"${o === String(val) ? ' selected' : ''}>${o}</option>`).join('');
+          control = `<select class="ps-select" data-pi="${pi}" data-key="${field.key}">${opts}</select>`;
+        } else if (field.type === 'numeric') {
+          const nums = [-2,-1,0,1,2];
+          const btns = nums.map(n => { const lbl = n > 0 ? `+${n}` : `${n}`; return `<button class="num-btn${val === n ? ' active' : ''}" data-pi="${pi}" data-key="${field.key}" data-num="${n}">${lbl}</button>`; }).join('');
+          control = `<div class="num-group">${btns}</div>`;
+        } else if (field.type === 'options') {
+          const btns = field.options.map(o => `<button class="opt-btn${val === o ? ' active' : ''}" data-pi="${pi}" data-key="${field.key}" data-opt="${o}">${o}</button>`).join('');
+          control = `<div class="opt-group">${btns}</div>`;
+        }
+        html += `<div class="profile-row"><div class="ps-key${isChanged ? ' changed' : ''}">${field.label}</div><div class="ps-control">${control}</div></div>`;
+      });
+    });
+
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+
+  // Events
+  container.querySelectorAll('.ps-select').forEach(el => {
+    el.addEventListener('change', e => {
+      const pi = +e.target.dataset.pi, key = e.target.dataset.key;
+      profiles[pi].settings[key] = e.target.value;
+      saveProfiles();
+      if (key === 'filmStyle') renderProfiles();
+    });
+  });
+
+  container.querySelectorAll('.num-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const pi = +e.target.dataset.pi, key = e.target.dataset.key, num = +e.target.dataset.num;
+      profiles[pi].settings[key] = num;
+      saveProfiles();
+      e.target.closest('.num-group').querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+    });
+  });
+
+  container.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const pi = +e.target.dataset.pi, key = e.target.dataset.key, opt = e.target.dataset.opt;
+      profiles[pi].settings[key] = opt;
+      saveProfiles();
+      e.target.closest('.opt-group').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+    });
+  });
+
+  container.querySelectorAll('.reset-btn').forEach(btn => {
+    let pending = false, timer = null;
+    btn.addEventListener('click', () => {
+      const pi = +btn.dataset.pi;
+      if (!pending) {
+        pending = true;
+        btn.textContent = 'Sure?';
+        btn.style.color = '#c0392b';
+        btn.style.borderColor = '#c0392b';
+        timer = setTimeout(() => {
+          pending = false;
+          btn.textContent = 'Reset';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 2500);
+      } else {
+        clearTimeout(timer);
+        profiles[pi].settings = JSON.parse(JSON.stringify(PROFILE_DEFAULTS[pi].settings));
+        saveProfiles(); renderProfiles(); showToast('Profile reset to defaults');
+      }
+    });
+  });
+}
+
+// ── ASK CLAUDE ────────────────────────────────────────────────────────────
+function buildCopyPrompt(q) {
+  const nv = n => (n === null || n === undefined) ? 'N/A' : (typeof n === 'number' ? (n > 0 ? `+${n}` : `${n}`) : n);
+  const profileSummary = profiles.map((p, i) => {
+    const s = p.settings;
+    return `Profile ${i+1} — ${p.name} (${p.subtitle})
+  Mode: ${s.mode}  |  ISO max: ${s.isoMax}  |  Min shutter: ${s.minShutter}
+  AF: ${s.afMode} / ${s.afArea}  |  Metering: ${s.metering}
+  Film Style: ${s.filmStyle}  |  Contrast: ${nv(s.contrast)}  |  Sharpness: ${nv(s.sharpness)}${s.saturation !== null ? `  |  Saturation: ${nv(s.saturation)}` : ''}  |  Highlights: ${nv(s.highlights)}  |  Shadows: ${nv(s.shadows)}
+  Noise Red: ${s.noiseReduction}  |  iDR: ${s.idr}  |  WB: ${s.wb}  |  Capture: ${s.capture}`;
+  }).join('\n\n');
+
+  return `I shoot with a Leica D-Lux 8 (17MP 4/3 sensor, 24–75mm equiv f/1.7–2.8, OIS, contrast-detect AF). Based in Scotland — mostly overcast light, family photography, young active son. Usually shoot JPG only (Mechanical shutter). My aesthetic preference: tonal weight over brightness, protected highlights, shadows that stay shadows, restrained processing. I don't like lifted shadows, HDR rendering, or boosted saturation.
+
+My three saved camera profiles:
+${profileSummary}
+
+Question: ${q}
+
+Please advise on which profile to load and exactly what to adjust. Cover: exposure compensation, aperture, min shutter floor, ISO cap, AF mode, AF area, metering, film style, contrast, sharpness, saturation, highlights, shadows, noise reduction, iDR, white balance, drive mode. Be direct and specific.`;
+}
+
+document.getElementById('ask-submit').addEventListener('click', () => {
+  const q = document.getElementById('ask-textarea').value.trim();
+  if (!q) { document.getElementById('ask-textarea').placeholder = 'Describe your scene first…'; return; }
+  const prompt = buildCopyPrompt(q);
+  const btn = document.getElementById('ask-submit');
+  const area = document.getElementById('ask-response-area');
+  navigator.clipboard.writeText(prompt).then(() => {
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy prompt'; btn.classList.remove('copied'); }, 2500);
+    area.innerHTML = `<div class="ask-steps visible">
+      <div class="ask-steps-title">Prompt copied</div>
+      <div class="ask-step"><span class="sn">1</span>Open Claude — app or claude.ai</div>
+      <div class="ask-step"><span class="sn">2</span>Start a new chat and paste</div>
+      <div class="ask-step"><span class="sn">3</span>Your full camera context is included — just send</div>
+      <div style="margin-top:12px;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;">What was copied</div>
+      <div class="ask-preview">${prompt.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    </div>`;
+  }).catch(() => {
+    area.innerHTML = `<div class="ask-steps visible"><div class="ask-steps-title">Copy this manually:</div><div class="ask-preview" style="max-height:200px;">${prompt.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>`;
+  });
+});
+
+// ── TOAST & INIT ──────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+window.addEventListener('load', () => {
+  document.querySelector('.scroll-area').scrollTop = 0;
+  updateLightNote(state.light);
+});
+renderRecipe();
+</script>
+</body>
+</html>
