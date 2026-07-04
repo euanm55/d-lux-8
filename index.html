@@ -326,7 +326,7 @@ input[type=range]::-webkit-slider-thumb {
   flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text);
   border-radius: 6px; padding: 7px 9px; font-family: 'Inter', sans-serif; font-size: 12px;
 }
-.delete-preset-btn {
+.reset-preset-btn, .delete-preset-btn {
   font-size: 11px; color: var(--muted); border: 1px solid var(--border); background: none;
   border-radius: 6px; padding: 7px 10px; cursor: pointer; font-family: 'Inter', sans-serif; flex-shrink: 0;
 }
@@ -533,16 +533,30 @@ const PROFILE_SECTIONS = [
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 // Light levels: 0=Night, 1=Very low, 2=Low light, 3=Overcast (default/centre), 4=Shade, 5=Bright day, 6=Harsh sun
+//
+// Every profile/preset carries its own `defaultSettings` — the baseline it's
+// compared against for "changed" highlighting and restored to on Reset. That
+// baseline travels with the object itself (name/subtitle/settings/defaultSettings
+// all move together) whenever it's swapped between My Profiles and Presets, so
+// "reset" always means "back to how this profile started", not "back to
+// whatever used to occupy this physical slot".
+function withDefaultSettings(item, fallbackSettings) {
+  return item.defaultSettings ? item : { ...item, defaultSettings: JSON.parse(JSON.stringify(fallbackSettings)) };
+}
+
 const savedProfiles = JSON.parse(localStorage.getItem('dlux8v5_profiles') || 'null');
 // Merge saved profiles onto the current defaults shape, so a future field added to
 // PROFILE_DEFAULTS shows up even for people with an older save in localStorage.
+// Older saves won't have defaultSettings yet — for the 3 built-in profiles the
+// factory value for that slot is a correct one-time backfill, since Presets
+// (and therefore swapping) didn't exist before this.
 let profiles = savedProfiles
-  ? PROFILE_DEFAULTS.map((def, i) => ({
+  ? PROFILE_DEFAULTS.map((def, i) => withDefaultSettings({
       ...def,
       ...savedProfiles[i],
       settings: { ...def.settings, ...(savedProfiles[i] && savedProfiles[i].settings) },
-    }))
-  : JSON.parse(JSON.stringify(PROFILE_DEFAULTS));
+    }, def.settings))
+  : PROFILE_DEFAULTS.map(def => ({ ...def, settings: JSON.parse(JSON.stringify(def.settings)), defaultSettings: JSON.parse(JSON.stringify(def.settings)) }));
 
 const state = { location:'outdoors', light:3, subject:'family', feel:'tonal', bw:false, bwtype:'everyday', format:'dng' };
 const lightLabels = ['Night / Dim','Very low','Low light','Overcast','Shade','Bright day','Harsh sun'];
@@ -560,7 +574,11 @@ function saveProfiles() { localStorage.setItem('dlux8v5_profiles', JSON.stringif
 
 // Presets are a separate library of named setups (e.g. "Holiday") that aren't
 // currently loaded onto the camera — distinct from the 3 active User profiles above.
-let presets = JSON.parse(localStorage.getItem('dlux8v5_presets') || '[]');
+// A preset with no recorded defaultSettings (saved before this existed) has no
+// known baseline, so its current settings become its default — the conservative
+// choice that shows nothing as "changed" rather than guessing wrong.
+let presets = JSON.parse(localStorage.getItem('dlux8v5_presets') || '[]')
+  .map(p => withDefaultSettings(p, p.settings));
 function savePresets() { localStorage.setItem('dlux8v5_presets', JSON.stringify(presets)); }
 
 // ── BUILD FEEL GRID ───────────────────────────────────────────────────────
@@ -1226,36 +1244,49 @@ function renderSettingsRows(settings, { entityId, isChangedFn }) {
   return html;
 }
 
+// Toggles the "changed" highlight on a field's row immediately after an edit,
+// rather than waiting for the next full re-render. `isFieldChanged(id, key, val)`
+// looks up the right item itself, since one container holds many cards/items.
+function updateChangedClass(controlEl, isFieldChanged, id, key, val) {
+  if (!isFieldChanged) return;
+  const row = controlEl.closest('.profile-row');
+  const keyEl = row && row.querySelector('.ps-key');
+  if (keyEl) keyEl.classList.toggle('changed', isFieldChanged(id, key, val));
+}
+
 // Wires the select/numeric/option controls rendered by renderSettingsRows() inside
 // `container`. `findItem(id)` must return the {settings} object matching that id.
-function wireSettingsEvents(container, { findItem, save, onFilmStyleChange }) {
+function wireSettingsEvents(container, { findItem, save, onFilmStyleChange, isFieldChanged }) {
   container.querySelectorAll('.ps-select').forEach(el => {
     el.addEventListener('change', e => {
-      const item = findItem(e.target.dataset.id), key = e.target.dataset.key;
+      const id = e.target.dataset.id, item = findItem(id), key = e.target.dataset.key;
       if (!item) return; // item may have been removed/consumed (e.g. a preset swapped away) since this control was rendered
       item.settings[key] = e.target.value;
       save();
       if (key === 'filmStyle' && onFilmStyleChange) onFilmStyleChange();
+      else updateChangedClass(e.target, isFieldChanged, id, key, e.target.value);
     });
   });
   container.querySelectorAll('.num-btn').forEach(btn => {
     btn.addEventListener('click', e => {
-      const item = findItem(e.target.dataset.id), key = e.target.dataset.key, num = +e.target.dataset.num;
+      const id = e.target.dataset.id, item = findItem(id), key = e.target.dataset.key, num = +e.target.dataset.num;
       if (!item) return;
       item.settings[key] = num;
       save();
       e.target.closest('.num-group').querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
+      updateChangedClass(e.target, isFieldChanged, id, key, num);
     });
   });
   container.querySelectorAll('.opt-btn').forEach(btn => {
     btn.addEventListener('click', e => {
-      const item = findItem(e.target.dataset.id), key = e.target.dataset.key, opt = e.target.dataset.opt;
+      const id = e.target.dataset.id, item = findItem(id), key = e.target.dataset.key, opt = e.target.dataset.opt;
       if (!item) return;
       item.settings[key] = opt;
       save();
       e.target.closest('.opt-group').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
+      updateChangedClass(e.target, isFieldChanged, id, key, opt);
     });
   });
 }
@@ -1284,18 +1315,18 @@ function renderProfiles() {
   profiles.forEach((profile, pi) => {
     const card = document.createElement('div');
     card.className = 'profile-card';
-    const isDefault = profile.name === PROFILE_DEFAULTS[pi].name;
-    const defaultTag = isDefault ? '' : `<div class="profile-default-tag">Factory default for this slot: ${esc(PROFILE_DEFAULTS[pi].name)}</div>`;
+    const isOriginalOccupant = profile.name === PROFILE_DEFAULTS[pi].name;
+    const slotTag = isOriginalOccupant ? '' : `<div class="profile-default-tag">Originally in this slot: ${esc(PROFILE_DEFAULTS[pi].name)}</div>`;
     let html = `<div class="profile-card-header">
       <div style="display:flex;align-items:center">
         <div class="profile-badge-num">${pi + 1}</div>
-        <div><div class="profile-card-name">${profile.name}</div><div class="profile-card-sub">${profile.subtitle}</div>${defaultTag}</div>
+        <div><div class="profile-card-name">${profile.name}</div><div class="profile-card-sub">${profile.subtitle}</div>${slotTag}</div>
       </div>
       <button class="reset-btn" data-pi="${pi}">Reset</button>
     </div>`;
     html += renderSettingsRows(profile.settings, {
       entityId: pi,
-      isChangedFn: (key, val) => String(val) !== String(PROFILE_DEFAULTS[pi].settings[key]),
+      isChangedFn: (key, val) => String(val) !== String(profile.defaultSettings[key]),
     });
     card.innerHTML = html;
     container.appendChild(card);
@@ -1305,13 +1336,14 @@ function renderProfiles() {
     findItem: id => profiles[+id],
     save: saveProfiles,
     onFilmStyleChange: renderProfiles,
+    isFieldChanged: (id, key, val) => String(val) !== String(profiles[+id].defaultSettings[key]),
   });
 
   container.querySelectorAll('.reset-btn').forEach(btn => {
     const pi = +btn.dataset.pi;
     wireConfirmButton(btn, 'Sure?', () => {
-      profiles[pi] = JSON.parse(JSON.stringify(PROFILE_DEFAULTS[pi]));
-      saveProfiles(); renderProfiles(); showToast('Profile reset to defaults');
+      profiles[pi].settings = JSON.parse(JSON.stringify(profiles[pi].defaultSettings));
+      saveProfiles(); renderProfiles(); showToast(`${profiles[pi].name} reset to its default settings`);
     });
   });
 }
@@ -1338,10 +1370,14 @@ function renderPresets() {
           <option value="">Load into…</option>
           ${loadOptions}
         </select>
+        <button class="reset-preset-btn" data-id="${preset.id}">Reset</button>
         <button class="delete-preset-btn" data-id="${preset.id}">Delete</button>
       </div>
     </div>`;
-    html += renderSettingsRows(preset.settings, { entityId: preset.id });
+    html += renderSettingsRows(preset.settings, {
+      entityId: preset.id,
+      isChangedFn: (key, val) => String(val) !== String(preset.defaultSettings[key]),
+    });
     card.innerHTML = html;
     container.appendChild(card);
   });
@@ -1350,6 +1386,10 @@ function renderPresets() {
     findItem: id => presets.find(p => p.id === id),
     save: savePresets,
     onFilmStyleChange: renderPresets,
+    isFieldChanged: (id, key, val) => {
+      const p = presets.find(pp => pp.id === id);
+      return p ? String(val) !== String(p.defaultSettings[key]) : false;
+    },
   });
 
   container.querySelectorAll('.preset-name-input').forEach(el => {
@@ -1386,12 +1426,14 @@ function renderPresets() {
           name: displaced.name,
           subtitle: displaced.subtitle,
           settings: JSON.parse(JSON.stringify(displaced.settings)),
+          defaultSettings: JSON.parse(JSON.stringify(displaced.defaultSettings)),
         });
         profiles[idx] = {
           ...profiles[idx],
           name: preset.name,
           subtitle: preset.subtitle,
           settings: JSON.parse(JSON.stringify(preset.settings)),
+          defaultSettings: JSON.parse(JSON.stringify(preset.defaultSettings)),
         };
         saveProfiles();
         savePresets();
@@ -1399,6 +1441,16 @@ function renderPresets() {
       }
       e.target.value = '';
       renderPresets();
+    });
+  });
+
+  container.querySelectorAll('.reset-preset-btn').forEach(btn => {
+    const id = btn.dataset.id;
+    wireConfirmButton(btn, 'Sure?', () => {
+      const preset = presets.find(p => p.id === id);
+      if (!preset) return;
+      preset.settings = JSON.parse(JSON.stringify(preset.defaultSettings));
+      savePresets(); renderPresets(); showToast(`${preset.name} reset to its default settings`);
     });
   });
 
@@ -1413,11 +1465,13 @@ function renderPresets() {
 
 document.getElementById('new-preset-btn').addEventListener('click', () => {
   const id = 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const seedSettings = JSON.parse(JSON.stringify(PROFILE_DEFAULTS[0].settings));
   presets.push({
     id,
     name: 'New preset',
     subtitle: '',
-    settings: JSON.parse(JSON.stringify(PROFILE_DEFAULTS[0].settings)),
+    settings: seedSettings,
+    defaultSettings: JSON.parse(JSON.stringify(seedSettings)),
   });
   savePresets();
   renderPresets();
@@ -1502,8 +1556,14 @@ document.getElementById('import-file').addEventListener('change', e => {
         if (Array.isArray(imported.presets)) newPresets = imported.presets;
       }
       if (!newProfiles && !newPresets) { showToast('Not a valid backup file'); return; }
-      if (newProfiles) { profiles = newProfiles; saveProfiles(); renderProfiles(); }
-      if (newPresets) { presets = newPresets; savePresets(); renderPresets(); }
+      if (newProfiles) {
+        profiles = newProfiles.map((p, i) => withDefaultSettings(p, PROFILE_DEFAULTS[i].settings));
+        saveProfiles(); renderProfiles();
+      }
+      if (newPresets) {
+        presets = newPresets.map(p => withDefaultSettings(p, p.settings));
+        savePresets(); renderPresets();
+      }
       showToast('Backup restored');
     } catch {
       showToast('Could not read that file');
