@@ -1,0 +1,77 @@
+[
+  {
+    "id": "u1",
+    "name": "Everyday Colour",
+    "subtitle": "Family · travel · streets · general life",
+    "settings": {
+      "mode": "A",
+      "isoMax": "3200",
+      "minShutter": "1/250",
+      "afMode": "AFs",
+      "afArea": "Field AF",
+      "metering": "Multi-Field",
+      "filmStyle": "Standard",
+      "contrast": 0,
+      "sharpness": 0,
+      "saturation": 0,
+      "highlights": -1,
+      "shadows": 0,
+      "noiseReduction": "Standard",
+      "idr": "Auto",
+      "wb": "AWB",
+      "ois": "On",
+      "shutterType": "Mechanical",
+      "capture": "JPG only"
+    }
+  },
+  {
+    "id": "u2",
+    "name": "Moving Subjects",
+    "subtitle": "Active kids · animals · action",
+    "settings": {
+      "mode": "A",
+      "isoMax": "3200",
+      "minShutter": "1/500",
+      "afMode": "AFc",
+      "afArea": "Large Field AF",
+      "metering": "Multi-Field",
+      "filmStyle": "Standard",
+      "contrast": 0,
+      "sharpness": 0,
+      "saturation": 0,
+      "highlights": -1,
+      "shadows": 0,
+      "noiseReduction": "Standard",
+      "idr": "Auto",
+      "wb": "AWB",
+      "ois": "On",
+      "shutterType": "Mechanical",
+      "capture": "JPG only"
+    }
+  },
+  {
+    "id": "u3",
+    "name": "Monochrome",
+    "subtitle": "Documentary · strong light · graphic",
+    "settings": {
+      "mode": "A",
+      "isoMax": "6400",
+      "minShutter": "1/250",
+      "afMode": "AFs",
+      "afArea": "Field AF",
+      "metering": "Multi-Field",
+      "filmStyle": "Monochrome HC",
+      "contrast": 0,
+      "sharpness": 0,
+      "saturation": null,
+      "highlights": -1,
+      "shadows": 0,
+      "noiseReduction": "Low",
+      "idr": "Low",
+      "wb": "AWB",
+      "ois": "On",
+      "shutterType": "Mechanical",
+      "capture": "JPG only"
+    }
+  }
+]

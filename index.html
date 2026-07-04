@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>D-Lux 8</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#141414">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="D-Lux 8">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -289,6 +296,16 @@ input[type=range]::-webkit-slider-thumb {
 }
 .settings-persist-tip strong { color: #c9a84c; font-weight: 500; }
 
+/* BACKUP */
+.backup-row { display: flex; gap: 8px; margin-top: 4px; }
+.backup-btn {
+  flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 10px; font-family: 'Inter', sans-serif; font-size: 12px;
+  font-weight: 500; cursor: pointer;
+}
+.backup-btn:active { background: var(--surface2); }
+.backup-note { font-size: 11px; color: var(--dim); margin-top: 8px; line-height: 1.5; }
+
 /* TOAST */
 .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 100; }
 .toast.show { opacity: 1; }
@@ -374,6 +391,12 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <p class="profile-intro">Your three saved camera profiles. Update if you change them on the camera.</p>
     <div id="profiles-container"></div>
+    <div class="backup-row">
+      <button class="backup-btn" id="export-btn">Export backup</button>
+      <button class="backup-btn" id="import-btn">Import backup</button>
+      <input type="file" id="import-file" accept="application/json" hidden>
+    </div>
+    <p class="backup-note">Profiles live only in this browser. Export a backup after making changes, in case you switch phones or clear browser data.</p>
     <div style="height:30px;"></div>
   </div>
 
@@ -474,8 +497,16 @@ const PROFILE_SECTIONS = [
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 // Light levels: 0=Night, 1=Very low, 2=Low light, 3=Overcast (default/centre), 4=Shade, 5=Bright day, 6=Harsh sun
-let profiles = JSON.parse(localStorage.getItem('dlux8v5_profiles') || 'null')
-  || JSON.parse(JSON.stringify(PROFILE_DEFAULTS));
+const savedProfiles = JSON.parse(localStorage.getItem('dlux8v5_profiles') || 'null');
+// Merge saved profiles onto the current defaults shape, so a future field added to
+// PROFILE_DEFAULTS shows up even for people with an older save in localStorage.
+let profiles = savedProfiles
+  ? PROFILE_DEFAULTS.map((def, i) => ({
+      ...def,
+      ...savedProfiles[i],
+      settings: { ...def.settings, ...(savedProfiles[i] && savedProfiles[i].settings) },
+    }))
+  : JSON.parse(JSON.stringify(PROFILE_DEFAULTS));
 
 const state = { location:'outdoors', light:3, subject:'family', feel:'tonal', bw:false, bwtype:'everyday', format:'dng' };
 const lightLabels = ['Night / Dim','Very low','Low light','Overcast','Shade','Bright day','Harsh sun'];
@@ -575,9 +606,9 @@ document.getElementById('bw-switch').addEventListener('click', () => {
 
 // ── RECIPE ENGINE ─────────────────────────────────────────────────────────
 function generateRecipe() {
-  const { location, light, subject, feel, bw, bwtype, format } = state;
+  const { location: place, light, subject, feel, bw, bwtype, format } = state;
 
-  const isIndoors = location === 'indoors';
+  const isIndoors = place === 'indoors';
 
   // Light levels: 0=Night, 1=Very low, 2=Low light, 3=Overcast, 4=Shade, 5=Bright, 6=Harsh
   const isNight    = light === 0;
@@ -817,7 +848,7 @@ function generateRecipe() {
   };
 
   const profileMatch = matchProfile({ subject, feel, bw, bwtype, shutterFloor, afMode, light, isShade, isBright, isHarsh, isOvercast });
-  const tips = buildTips({ location, light, subject, feel, bw, bwtype, jpgOnly, isNight, isDim, isDimOrLow, isOvercast, isShade, isBright, isHarsh, isIndoors, effIsDim, effIsDimOrLow, hasKid, hasAnimal, isMoving, hasPeople, isStreet });
+  const tips = buildTips({ light, subject, feel, bw, bwtype, jpgOnly, isNight, isDim, isDimOrLow, isOvercast, isShade, isBright, isHarsh, isIndoors, effIsDim, effIsDimOrLow, hasKid, hasAnimal, isMoving, hasPeople, isStreet });
   const postNote = buildPostNote(feel, bw, jpgOnly);
 
   return { mode, aperture, shutterFloor, isoMax, shutterNote, aperNote, afMode, afArea, metering, drive,
@@ -851,6 +882,22 @@ function idrWhy(v) {
 }
 
 // ── PROFILE MATCH ─────────────────────────────────────────────────────────
+// Shared by the Moving Subjects and Everyday Colour branches below — both start
+// from a FEELS entry and list only the fields that differ from that profile's base.
+function feelDeltas(feelData, fmt, { includeContrast = false } = {}) {
+  const deltas = [];
+  if (!feelData) return deltas;
+  const signed = n => (n > 0 ? `+${n}` : `${n}`);
+  if (feelData.filmStyle !== 'Standard') deltas.push(`Film Style → ${fmt(feelData.filmStyle)}`);
+  if (includeContrast && feelData.contrast !== 0) deltas.push(`Contrast → ${fmt(signed(feelData.contrast))}`);
+  if (feelData.saturation !== 0) deltas.push(`Saturation → ${fmt(signed(feelData.saturation))}`);
+  if (feelData.highlights !== -1) deltas.push(`Highlights → ${fmt(signed(feelData.highlights))}`);
+  if (feelData.shadows !== 0) deltas.push(`Shadows → ${fmt(signed(feelData.shadows))}`);
+  if (feelData.idr !== 'Auto') deltas.push(`iDR → ${fmt(feelData.idr)}`);
+  if (feelData.expComp) deltas.push(`Exp Comp → ${fmt(feelData.expComp)}`);
+  return deltas;
+}
+
 function matchProfile({ subject, feel, bw, bwtype, shutterFloor, afMode, light, isShade, isBright, isHarsh, isOvercast }) {
   const fmt = v => `<span class="dv">${v}</span>`;
   const isMoving = subject === 'kid-active' || subject === 'animals';
@@ -872,31 +919,16 @@ function matchProfile({ subject, feel, bw, bwtype, shutterFloor, afMode, light, 
 
   if (isMoving) {
     // Profile 2 — Moving Subjects
-    const deltas = [];
     const feelData = FEELS.find(f => f.id === feel);
-    if (feelData && feelData.filmStyle !== 'Standard') deltas.push(`Film Style → ${fmt(feelData.filmStyle)}`);
-    if (feelData && feelData.saturation !== 0) deltas.push(`Saturation → ${fmt(feelData.saturation > 0 ? '+'+feelData.saturation : feelData.saturation)}`);
-    if (feelData && feelData.highlights !== -1) deltas.push(`Highlights → ${fmt(feelData.highlights > 0 ? '+'+feelData.highlights : feelData.highlights)}`);
-    if (feelData && feelData.shadows !== 0) deltas.push(`Shadows → ${fmt(feelData.shadows > 0 ? '+'+feelData.shadows : feelData.shadows)}`);
-    if (feelData && feelData.idr !== 'Auto') deltas.push(`iDR → ${fmt(feelData.idr)}`);
-    if (feelData && feelData.expComp) deltas.push(`Exp Comp → ${fmt(feelData.expComp)}`);
+    const deltas = feelDeltas(feelData, fmt);
     if (subject === 'animals') deltas.push(`AF Area → ${fmt('Tracking')}`);
     return { name: profiles[1].name, desc: 'Start from your Moving Subjects profile:', deltas };
   }
 
   // Profile 1 — Everyday Colour (default)
   const f = FEELS.find(x => x.id === feel);
-  const deltas = [];
-  if (f) {
-    if (f.filmStyle !== 'Standard')       deltas.push(`Film Style → ${fmt(f.filmStyle)}`);
-    if (f.contrast  !== 0)                deltas.push(`Contrast → ${fmt(f.contrast > 0 ? '+'+f.contrast : f.contrast)}`);
-    if (f.saturation !== 0)               deltas.push(`Saturation → ${fmt(f.saturation > 0 ? '+'+f.saturation : f.saturation)}`);
-    if (f.highlights !== -1)              deltas.push(`Highlights → ${fmt(f.highlights > 0 ? '+'+f.highlights : f.highlights)}`);
-    if (f.shadows !== 0)                  deltas.push(`Shadows → ${fmt(f.shadows > 0 ? '+'+f.shadows : f.shadows)}`);
-    if (f.idr !== 'Auto')                 deltas.push(`iDR → ${fmt(f.idr)}`);
-    if (f.expComp)                        deltas.push(`Exp Comp → ${fmt(f.expComp)}`);
-    if (isHarsh || isBright)             deltas.push(`Exp Comp → ${fmt('−0.3 EV')} (protect highlights)`);
-  }
+  const deltas = feelDeltas(f, fmt, { includeContrast: true });
+  if (f && (isHarsh || isBright)) deltas.push(`Exp Comp → ${fmt('−0.3 EV')} (protect highlights)`);
   if (subject === 'adults')              deltas.push(`AF Area → ${fmt('Face/Eye Detection')}`);
   if (subject === 'family')              deltas.push(`AF Area → ${fmt('Face/Eye Detection')}`);
   if (subject === 'street')              deltas.push(`AF Mode → ${fmt('AFc')}`, `AF Area → ${fmt('Field AF')}`);
@@ -910,7 +942,7 @@ function matchProfile({ subject, feel, bw, bwtype, shutterFloor, afMode, light, 
 }
 
 // ── TIPS ──────────────────────────────────────────────────────────────────
-function buildTips({ location, light, subject, feel, bw, bwtype, jpgOnly, isNight, isDim, isDimOrLow, isOvercast, isShade, isBright, isHarsh, isIndoors, effIsDim, effIsDimOrLow, hasKid, hasAnimal, isMoving, hasPeople, isStreet }) {
+function buildTips({ light, subject, feel, bw, bwtype, jpgOnly, isNight, isDim, isDimOrLow, isOvercast, isShade, isBright, isHarsh, isIndoors, effIsDim, effIsDimOrLow, hasKid, hasAnimal, isMoving, hasPeople, isStreet }) {
   const tips = [];
 
   if (hasKid) {
@@ -1260,6 +1292,47 @@ document.getElementById('ask-submit').addEventListener('click', () => {
   });
 });
 
+// ── BACKUP (EXPORT / IMPORT) ────────────────────────────────────────────────
+// Profiles only live in this browser's localStorage — export/import is the
+// manual way to carry them to a new phone or recover from cleared storage.
+document.getElementById('export-btn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(profiles, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `dlux8-profiles-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded');
+});
+
+document.getElementById('import-btn').addEventListener('click', () => {
+  document.getElementById('import-file').click();
+});
+
+document.getElementById('import-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      const valid = Array.isArray(imported) && imported.length === 3 &&
+        imported.every(p => p && typeof p === 'object' && p.settings);
+      if (!valid) { showToast('Not a valid profiles backup'); return; }
+      profiles = imported;
+      saveProfiles();
+      renderProfiles();
+      showToast('Profiles restored');
+    } catch {
+      showToast('Could not read that file');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
 // ── TOAST & INIT ──────────────────────────────────────────────────────────
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -1270,6 +1343,9 @@ function showToast(msg) {
 window.addEventListener('load', () => {
   document.querySelector('.scroll-area').scrollTop = 0;
   updateLightNote(state.light);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 });
 renderRecipe();
 </script>
