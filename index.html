@@ -306,6 +306,32 @@ input[type=range]::-webkit-slider-thumb {
 .backup-btn:active { background: var(--surface2); }
 .backup-note { font-size: 11px; color: var(--dim); margin-top: 8px; line-height: 1.5; }
 
+/* PRESETS */
+.new-preset-btn {
+  width: 100%; background: none; border: 1.5px dashed var(--border); color: var(--muted);
+  border-radius: 10px; padding: 12px; font-family: 'Inter', sans-serif; font-size: 13px;
+  font-weight: 500; cursor: pointer; margin-bottom: 16px;
+}
+.new-preset-btn:active { background: var(--surface); }
+.preset-card-header { padding: 13px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.preset-name-input, .preset-sub-input {
+  display: block; width: 100%; background: none; border: none; color: var(--text);
+  font-family: 'Instrument Serif', serif; font-size: 18px; padding: 2px 0; outline: none;
+}
+.preset-sub-input { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.preset-name-input:focus, .preset-sub-input:focus { color: var(--text); }
+.preset-actions { display: flex; gap: 8px; margin-top: 10px; }
+.load-select {
+  flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 7px 9px; font-family: 'Inter', sans-serif; font-size: 12px;
+}
+.delete-preset-btn {
+  font-size: 11px; color: var(--muted); border: 1px solid var(--border); background: none;
+  border-radius: 6px; padding: 7px 10px; cursor: pointer; font-family: 'Inter', sans-serif; flex-shrink: 0;
+}
+.confirm-pending { color: #c0392b !important; border-color: #c0392b !important; }
+.presets-empty { font-size: 12px; color: var(--dim); font-style: italic; padding: 20px 0; text-align: center; }
+
 /* TOAST */
 .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.2s; white-space: nowrap; z-index: 100; }
 .toast.show { opacity: 1; }
@@ -322,6 +348,7 @@ input[type=range]::-webkit-slider-thumb {
 <div class="tabs">
   <div class="tab active" data-tab="recipe">Recipe</div>
   <div class="tab" data-tab="profiles">My Profiles</div>
+  <div class="tab" data-tab="presets">Presets</div>
   <div class="tab" data-tab="ask">Ask</div>
 </div>
 
@@ -397,6 +424,14 @@ input[type=range]::-webkit-slider-thumb {
       <input type="file" id="import-file" accept="application/json" hidden>
     </div>
     <p class="backup-note">Profiles live only in this browser. Export a backup after making changes, in case you switch phones or clear browser data.</p>
+    <div style="height:30px;"></div>
+  </div>
+
+  <!-- PRESETS TAB -->
+  <div class="tab-panel" id="tab-presets">
+    <p class="profile-intro">Extra profile setups you're not currently running on the camera — a holiday look, an event setup, whatever. Load one into User 1/2/3 when you want to swap it in.</p>
+    <button class="new-preset-btn" id="new-preset-btn">+ New preset</button>
+    <div id="presets-container"></div>
     <div style="height:30px;"></div>
   </div>
 
@@ -522,6 +557,11 @@ const lightNotes = [
 
 function saveProfiles() { localStorage.setItem('dlux8v5_profiles', JSON.stringify(profiles)); }
 
+// Presets are a separate library of named setups (e.g. "Holiday") that aren't
+// currently loaded onto the camera — distinct from the 3 active User profiles above.
+let presets = JSON.parse(localStorage.getItem('dlux8v5_presets') || '[]');
+function savePresets() { localStorage.setItem('dlux8v5_presets', JSON.stringify(presets)); }
+
 // ── BUILD FEEL GRID ───────────────────────────────────────────────────────
 const feelGrid = document.getElementById('feel-grid');
 FEELS.forEach(f => {
@@ -566,6 +606,7 @@ document.querySelectorAll('.tab').forEach(t => {
     t.classList.add('active');
     document.getElementById('tab-' + t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'profiles') renderProfiles();
+    if (t.dataset.tab === 'presets') renderPresets();
     document.querySelector('.scroll-area').scrollTop = 0;
   });
 });
@@ -1147,15 +1188,98 @@ function subjectLabel(s) {
 document.getElementById('gen-btn').addEventListener('click', renderRecipe);
 
 // ── RENDER PROFILES ───────────────────────────────────────────────────────
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Shared by renderProfiles() and renderPresets() — builds the Exposure/Focus/
+// Image/Other field rows for a single settings object.
+function renderSettingsRows(settings, { entityId, isChangedFn }) {
+  const isMono = ['Monochrome','Monochrome HC','Cinelike D2','Cinelike V2'].includes(settings.filmStyle);
+  let html = '';
+  PROFILE_SECTIONS.forEach(section => {
+    html += `<div class="ps-section">${section.label}</div>`;
+    section.fields.forEach(field => {
+      const val = settings[field.key];
+      if (field.hideIfMono && isMono) {
+        html += `<div class="profile-row"><div class="ps-key">${field.label}</div><div class="ps-control"><span class="ps-na">N/A — Monochrome</span></div></div>`;
+        return;
+      }
+      const isChanged = isChangedFn ? isChangedFn(field.key, val) : false;
+      const dataAttrs = `data-id="${entityId}" data-key="${field.key}"`;
+      let control = '';
+      if (field.type === 'select') {
+        const opts = field.options.map(o => `<option value="${o}"${o === String(val) ? ' selected' : ''}>${o}</option>`).join('');
+        control = `<select class="ps-select" ${dataAttrs}>${opts}</select>`;
+      } else if (field.type === 'numeric') {
+        const nums = [-2,-1,0,1,2];
+        const btns = nums.map(n => { const lbl = n > 0 ? `+${n}` : `${n}`; return `<button class="num-btn${val === n ? ' active' : ''}" ${dataAttrs} data-num="${n}">${lbl}</button>`; }).join('');
+        control = `<div class="num-group">${btns}</div>`;
+      } else if (field.type === 'options') {
+        const btns = field.options.map(o => `<button class="opt-btn${val === o ? ' active' : ''}" ${dataAttrs} data-opt="${o}">${o}</button>`).join('');
+        control = `<div class="opt-group">${btns}</div>`;
+      }
+      html += `<div class="profile-row"><div class="ps-key${isChanged ? ' changed' : ''}">${field.label}</div><div class="ps-control">${control}</div></div>`;
+    });
+  });
+  return html;
+}
+
+// Wires the select/numeric/option controls rendered by renderSettingsRows() inside
+// `container`. `findItem(id)` must return the {settings} object matching that id.
+function wireSettingsEvents(container, { findItem, save, onFilmStyleChange }) {
+  container.querySelectorAll('.ps-select').forEach(el => {
+    el.addEventListener('change', e => {
+      const item = findItem(e.target.dataset.id), key = e.target.dataset.key;
+      item.settings[key] = e.target.value;
+      save();
+      if (key === 'filmStyle' && onFilmStyleChange) onFilmStyleChange();
+    });
+  });
+  container.querySelectorAll('.num-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const item = findItem(e.target.dataset.id), key = e.target.dataset.key, num = +e.target.dataset.num;
+      item.settings[key] = num;
+      save();
+      e.target.closest('.num-group').querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+    });
+  });
+  container.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const item = findItem(e.target.dataset.id), key = e.target.dataset.key, opt = e.target.dataset.opt;
+      item.settings[key] = opt;
+      save();
+      e.target.closest('.opt-group').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+    });
+  });
+}
+
+// Turns a button into a tap-twice-to-confirm control (used for Reset and Delete).
+function wireConfirmButton(btn, confirmLabel, action) {
+  const original = btn.textContent;
+  let pending = false, timer = null;
+  btn.addEventListener('click', () => {
+    if (!pending) {
+      pending = true;
+      btn.textContent = confirmLabel;
+      btn.classList.add('confirm-pending');
+      timer = setTimeout(() => { pending = false; btn.textContent = original; btn.classList.remove('confirm-pending'); }, 2500);
+    } else {
+      clearTimeout(timer);
+      action();
+    }
+  });
+}
+
 function renderProfiles() {
   const container = document.getElementById('profiles-container');
   container.innerHTML = '';
 
   profiles.forEach((profile, pi) => {
-    const isMono = ['Monochrome','Monochrome HC','Cinelike D2','Cinelike V2'].includes(profile.settings.filmStyle);
     const card = document.createElement('div');
     card.className = 'profile-card';
-
     let html = `<div class="profile-card-header">
       <div style="display:flex;align-items:center">
         <div class="profile-badge-num">${pi + 1}</div>
@@ -1163,90 +1287,122 @@ function renderProfiles() {
       </div>
       <button class="reset-btn" data-pi="${pi}">Reset</button>
     </div>`;
-
-    PROFILE_SECTIONS.forEach(section => {
-      html += `<div class="ps-section">${section.label}</div>`;
-      section.fields.forEach(field => {
-        const val = profile.settings[field.key];
-        if (field.hideIfMono && isMono) {
-          html += `<div class="profile-row"><div class="ps-key">${field.label}</div><div class="ps-control"><span class="ps-na">N/A — Monochrome</span></div></div>`;
-          return;
-        }
-        const defaultVal = PROFILE_DEFAULTS[pi].settings[field.key];
-        const isChanged = String(val) !== String(defaultVal);
-        let control = '';
-        if (field.type === 'select') {
-          const opts = field.options.map(o => `<option value="${o}"${o === String(val) ? ' selected' : ''}>${o}</option>`).join('');
-          control = `<select class="ps-select" data-pi="${pi}" data-key="${field.key}">${opts}</select>`;
-        } else if (field.type === 'numeric') {
-          const nums = [-2,-1,0,1,2];
-          const btns = nums.map(n => { const lbl = n > 0 ? `+${n}` : `${n}`; return `<button class="num-btn${val === n ? ' active' : ''}" data-pi="${pi}" data-key="${field.key}" data-num="${n}">${lbl}</button>`; }).join('');
-          control = `<div class="num-group">${btns}</div>`;
-        } else if (field.type === 'options') {
-          const btns = field.options.map(o => `<button class="opt-btn${val === o ? ' active' : ''}" data-pi="${pi}" data-key="${field.key}" data-opt="${o}">${o}</button>`).join('');
-          control = `<div class="opt-group">${btns}</div>`;
-        }
-        html += `<div class="profile-row"><div class="ps-key${isChanged ? ' changed' : ''}">${field.label}</div><div class="ps-control">${control}</div></div>`;
-      });
+    html += renderSettingsRows(profile.settings, {
+      entityId: pi,
+      isChangedFn: (key, val) => String(val) !== String(PROFILE_DEFAULTS[pi].settings[key]),
     });
-
     card.innerHTML = html;
     container.appendChild(card);
   });
 
-  // Events
-  container.querySelectorAll('.ps-select').forEach(el => {
-    el.addEventListener('change', e => {
-      const pi = +e.target.dataset.pi, key = e.target.dataset.key;
-      profiles[pi].settings[key] = e.target.value;
-      saveProfiles();
-      if (key === 'filmStyle') renderProfiles();
-    });
-  });
-
-  container.querySelectorAll('.num-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      const pi = +e.target.dataset.pi, key = e.target.dataset.key, num = +e.target.dataset.num;
-      profiles[pi].settings[key] = num;
-      saveProfiles();
-      e.target.closest('.num-group').querySelectorAll('.num-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-    });
-  });
-
-  container.querySelectorAll('.opt-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      const pi = +e.target.dataset.pi, key = e.target.dataset.key, opt = e.target.dataset.opt;
-      profiles[pi].settings[key] = opt;
-      saveProfiles();
-      e.target.closest('.opt-group').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-    });
+  wireSettingsEvents(container, {
+    findItem: id => profiles[+id],
+    save: saveProfiles,
+    onFilmStyleChange: renderProfiles,
   });
 
   container.querySelectorAll('.reset-btn').forEach(btn => {
-    let pending = false, timer = null;
-    btn.addEventListener('click', () => {
-      const pi = +btn.dataset.pi;
-      if (!pending) {
-        pending = true;
-        btn.textContent = 'Sure?';
-        btn.style.color = '#c0392b';
-        btn.style.borderColor = '#c0392b';
-        timer = setTimeout(() => {
-          pending = false;
-          btn.textContent = 'Reset';
-          btn.style.color = '';
-          btn.style.borderColor = '';
-        }, 2500);
-      } else {
-        clearTimeout(timer);
-        profiles[pi].settings = JSON.parse(JSON.stringify(PROFILE_DEFAULTS[pi].settings));
-        saveProfiles(); renderProfiles(); showToast('Profile reset to defaults');
-      }
+    const pi = +btn.dataset.pi;
+    wireConfirmButton(btn, 'Sure?', () => {
+      profiles[pi].settings = JSON.parse(JSON.stringify(PROFILE_DEFAULTS[pi].settings));
+      saveProfiles(); renderProfiles(); showToast('Profile reset to defaults');
     });
   });
 }
+
+// ── PRESETS (extra saved setups, not tied to a physical camera slot) ───────
+function renderPresets() {
+  const container = document.getElementById('presets-container');
+  container.innerHTML = '';
+
+  if (presets.length === 0) {
+    container.innerHTML = '<div class="presets-empty">No saved presets yet. Tap "+ New preset" to save one.</div>';
+    return;
+  }
+
+  presets.forEach(preset => {
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+    const loadOptions = profiles.map((p, i) => `<option value="${i}">User ${i + 1} — ${esc(p.name)}</option>`).join('');
+    let html = `<div class="preset-card-header">
+      <input class="preset-name-input" data-id="${preset.id}" value="${esc(preset.name)}" placeholder="Preset name">
+      <input class="preset-sub-input" data-id="${preset.id}" value="${esc(preset.subtitle || '')}" placeholder="Optional subtitle">
+      <div class="preset-actions">
+        <select class="load-select" data-id="${preset.id}">
+          <option value="">Load into…</option>
+          ${loadOptions}
+        </select>
+        <button class="delete-preset-btn" data-id="${preset.id}">Delete</button>
+      </div>
+    </div>`;
+    html += renderSettingsRows(preset.settings, { entityId: preset.id });
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+
+  wireSettingsEvents(container, {
+    findItem: id => presets.find(p => p.id === id),
+    save: savePresets,
+    onFilmStyleChange: renderPresets,
+  });
+
+  container.querySelectorAll('.preset-name-input').forEach(el => {
+    el.addEventListener('change', e => {
+      const preset = presets.find(p => p.id === e.target.dataset.id);
+      preset.name = e.target.value.trim() || 'Untitled preset';
+      savePresets();
+    });
+  });
+
+  container.querySelectorAll('.preset-sub-input').forEach(el => {
+    el.addEventListener('change', e => {
+      const preset = presets.find(p => p.id === e.target.dataset.id);
+      preset.subtitle = e.target.value.trim();
+      savePresets();
+    });
+  });
+
+  container.querySelectorAll('.load-select').forEach(el => {
+    el.addEventListener('change', e => {
+      const pi = e.target.value;
+      if (pi === '') return;
+      const preset = presets.find(p => p.id === e.target.dataset.id);
+      const idx = +pi;
+      if (confirm(`Load "${preset.name}" into User ${idx + 1}? This replaces the current User ${idx + 1} settings.`)) {
+        profiles[idx] = {
+          ...profiles[idx],
+          name: preset.name,
+          subtitle: preset.subtitle || profiles[idx].subtitle,
+          settings: JSON.parse(JSON.stringify(preset.settings)),
+        };
+        saveProfiles();
+        showToast(`Loaded "${preset.name}" into User ${idx + 1}`);
+      }
+      e.target.value = '';
+      renderPresets();
+    });
+  });
+
+  container.querySelectorAll('.delete-preset-btn').forEach(btn => {
+    const id = btn.dataset.id;
+    wireConfirmButton(btn, 'Sure?', () => {
+      presets = presets.filter(p => p.id !== id);
+      savePresets(); renderPresets(); showToast('Preset deleted');
+    });
+  });
+}
+
+document.getElementById('new-preset-btn').addEventListener('click', () => {
+  const id = 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  presets.push({
+    id,
+    name: 'New preset',
+    subtitle: '',
+    settings: JSON.parse(JSON.stringify(PROFILE_DEFAULTS[0].settings)),
+  });
+  savePresets();
+  renderPresets();
+});
 
 // ── ASK CLAUDE ────────────────────────────────────────────────────────────
 function buildCopyPrompt(q) {
@@ -1293,15 +1449,15 @@ document.getElementById('ask-submit').addEventListener('click', () => {
 });
 
 // ── BACKUP (EXPORT / IMPORT) ────────────────────────────────────────────────
-// Profiles only live in this browser's localStorage — export/import is the
-// manual way to carry them to a new phone or recover from cleared storage.
+// Profiles and presets only live in this browser's localStorage — export/import
+// is the manual way to carry them to a new phone or recover from cleared storage.
 document.getElementById('export-btn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(profiles, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ profiles, presets }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const date = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `dlux8-profiles-${date}.json`;
+  a.download = `dlux8-backup-${date}.json`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('Backup downloaded');
@@ -1318,13 +1474,18 @@ document.getElementById('import-file').addEventListener('change', e => {
   reader.onload = () => {
     try {
       const imported = JSON.parse(reader.result);
-      const valid = Array.isArray(imported) && imported.length === 3 &&
-        imported.every(p => p && typeof p === 'object' && p.settings);
-      if (!valid) { showToast('Not a valid profiles backup'); return; }
-      profiles = imported;
-      saveProfiles();
-      renderProfiles();
-      showToast('Profiles restored');
+      const isProfileArray = a => Array.isArray(a) && a.length === 3 && a.every(p => p && typeof p === 'object' && p.settings);
+      let newProfiles = null, newPresets = null;
+      if (isProfileArray(imported)) {
+        newProfiles = imported; // backup format from before presets existed
+      } else if (imported && typeof imported === 'object') {
+        if (isProfileArray(imported.profiles)) newProfiles = imported.profiles;
+        if (Array.isArray(imported.presets)) newPresets = imported.presets;
+      }
+      if (!newProfiles && !newPresets) { showToast('Not a valid backup file'); return; }
+      if (newProfiles) { profiles = newProfiles; saveProfiles(); renderProfiles(); }
+      if (newPresets) { presets = newPresets; savePresets(); renderPresets(); }
+      showToast('Backup restored');
     } catch {
       showToast('Could not read that file');
     }
