@@ -483,30 +483,38 @@ const FEELS = [
 const PROFILE_DEFAULTS = [
   {
     id:'u1', name:'Everyday Colour', subtitle:'Family · travel · streets · general life',
-    settings:{ mode:'A', isoMax:'3200', minShutter:'1/250', afMode:'AFs', afArea:'Field AF', metering:'Multi-Field',
+    settings:{ mode:'A', aperture:'f/2.8', isoMax:'3200', minShutter:'1/250', expComp:'0 EV', afMode:'AFs', afArea:'Field AF', metering:'Multi-Field',
       filmStyle:'Standard', contrast:0, sharpness:0, saturation:0, highlights:-1, shadows:0,
       noiseReduction:'Standard', idr:'Auto', wb:'AWB', ois:'On', shutterType:'Mechanical', capture:'JPG only' }
   },
   {
     id:'u2', name:'Moving Subjects', subtitle:'Active kids · animals · action',
-    settings:{ mode:'A', isoMax:'3200', minShutter:'1/500', afMode:'AFc', afArea:'Large Field AF', metering:'Multi-Field',
+    settings:{ mode:'A', aperture:'f/2.8', isoMax:'3200', minShutter:'1/500', expComp:'0 EV', afMode:'AFc', afArea:'Large Field AF', metering:'Multi-Field',
       filmStyle:'Standard', contrast:0, sharpness:0, saturation:0, highlights:-1, shadows:0,
       noiseReduction:'Standard', idr:'Auto', wb:'AWB', ois:'On', shutterType:'Mechanical', capture:'JPG only' }
   },
   {
     id:'u3', name:'Monochrome', subtitle:'Documentary · strong light · graphic',
-    settings:{ mode:'A', isoMax:'6400', minShutter:'1/250', afMode:'AFs', afArea:'Field AF', metering:'Multi-Field',
+    settings:{ mode:'A', aperture:'f/2.8', isoMax:'6400', minShutter:'1/250', expComp:'0 EV', afMode:'AFs', afArea:'Field AF', metering:'Multi-Field',
       filmStyle:'Monochrome HC', contrast:0, sharpness:0, saturation:null, highlights:-1, shadows:0,
       noiseReduction:'Low', idr:'Low', wb:'AWB', ois:'On', shutterType:'Mechanical', capture:'JPG only' }
   }
 ];
 
+// Settings keys added after the initial release. Any profile/preset saved before
+// this predates them, so these defaults get merged into both the live settings and
+// the saved defaultSettings baseline on load — otherwise the new fields would read
+// as undefined (and show as "changed" against a baseline that never had them).
+const ADDED_SETTING_DEFAULTS = { aperture:'f/2.8', expComp:'0 EV' };
+
 // ── PROFILE FIELD DEFINITIONS ─────────────────────────────────────────────
 const PROFILE_SECTIONS = [
   { label:'Exposure', fields:[
     { key:'mode',       label:'Mode',        type:'select',  options:['A','S','P','M'] },
+    { key:'aperture',   label:'Aperture',    type:'select',  options:['f/1.7','f/2.0','f/2.8','f/4','f/5.6','f/8','f/11','f/16'] },
     { key:'isoMax',     label:'ISO Max',     type:'select',  options:['800','1600','3200','6400','12800'] },
     { key:'minShutter', label:'Min Shutter', type:'select',  options:['1/60','1/100','1/125','1/160','1/200','1/250','1/320','1/500','1/1000'] },
+    { key:'expComp',    label:'EV Comp',     type:'select',  options:['-1 EV','-0.7 EV','-0.3 EV','0 EV','+0.3 EV','+0.7 EV','+1 EV'] },
   ]},
   { label:'Focus', fields:[
     { key:'afMode',   label:'AF Mode',   type:'select', options:['AFs','AFc','MF'] },
@@ -540,23 +548,32 @@ const PROFILE_SECTIONS = [
 // all move together) whenever it's swapped between My Profiles and Presets, so
 // "reset" always means "back to how this profile started", not "back to
 // whatever used to occupy this physical slot".
-function withDefaultSettings(item, fallbackSettings) {
-  return item.defaultSettings ? item : { ...item, defaultSettings: JSON.parse(JSON.stringify(fallbackSettings)) };
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+// Backfills any settings key added after an item was saved (ADDED_SETTING_DEFAULTS)
+// into both its live settings and its defaultSettings baseline, and seeds a
+// defaultSettings baseline if the item predates that concept entirely.
+function migrateItem(item, baselineFallback) {
+  return {
+    ...item,
+    settings: { ...ADDED_SETTING_DEFAULTS, ...item.settings },
+    defaultSettings: { ...ADDED_SETTING_DEFAULTS, ...(item.defaultSettings || baselineFallback) },
+  };
 }
 
 const savedProfiles = JSON.parse(localStorage.getItem('dlux8v5_profiles') || 'null');
-// Merge saved profiles onto the current defaults shape, so a future field added to
+// Merge saved profiles onto the current defaults shape, so a field added to
 // PROFILE_DEFAULTS shows up even for people with an older save in localStorage.
-// Older saves won't have defaultSettings yet — for the 3 built-in profiles the
-// factory value for that slot is a correct one-time backfill, since Presets
-// (and therefore swapping) didn't exist before this.
 let profiles = savedProfiles
-  ? PROFILE_DEFAULTS.map((def, i) => withDefaultSettings({
-      ...def,
-      ...savedProfiles[i],
-      settings: { ...def.settings, ...(savedProfiles[i] && savedProfiles[i].settings) },
-    }, def.settings))
-  : PROFILE_DEFAULTS.map(def => ({ ...def, settings: JSON.parse(JSON.stringify(def.settings)), defaultSettings: JSON.parse(JSON.stringify(def.settings)) }));
+  ? PROFILE_DEFAULTS.map((def, i) => {
+      const saved = savedProfiles[i] || {};
+      return migrateItem({
+        ...def,
+        ...saved,
+        settings: { ...def.settings, ...saved.settings },
+      }, def.settings);
+    })
+  : PROFILE_DEFAULTS.map(def => ({ ...def, settings: clone(def.settings), defaultSettings: clone(def.settings) }));
 
 const state = { location:'outdoors', light:3, subject:'family', feel:'tonal', bw:false, bwtype:'everyday', format:'dng' };
 const lightLabels = ['Night / Dim','Very low','Low light','Overcast','Shade','Bright day','Harsh sun'];
@@ -574,11 +591,11 @@ function saveProfiles() { localStorage.setItem('dlux8v5_profiles', JSON.stringif
 
 // Presets are a separate library of named setups (e.g. "Holiday") that aren't
 // currently loaded onto the camera — distinct from the 3 active User profiles above.
-// A preset with no recorded defaultSettings (saved before this existed) has no
+// A preset with no recorded defaultSettings (saved before that existed) has no
 // known baseline, so its current settings become its default — the conservative
 // choice that shows nothing as "changed" rather than guessing wrong.
 let presets = JSON.parse(localStorage.getItem('dlux8v5_presets') || '[]')
-  .map(p => withDefaultSettings(p, p.settings));
+  .map(p => migrateItem(p, p.settings));
 function savePresets() { localStorage.setItem('dlux8v5_presets', JSON.stringify(presets)); }
 
 // ── BUILD FEEL GRID ───────────────────────────────────────────────────────
@@ -1475,7 +1492,7 @@ function buildCopyPrompt(q) {
   const profileSummary = profiles.map((p, i) => {
     const s = p.settings;
     return `Profile ${i+1} — ${p.name} (${p.subtitle})
-  Mode: ${s.mode}  |  ISO max: ${s.isoMax}  |  Min shutter: ${s.minShutter}
+  Mode: ${s.mode}  |  Aperture: ${s.aperture}  |  ISO max: ${s.isoMax}  |  Min shutter: ${s.minShutter}  |  EV comp: ${s.expComp}
   AF: ${s.afMode} / ${s.afArea}  |  Metering: ${s.metering}
   Film Style: ${s.filmStyle}  |  Contrast: ${nv(s.contrast)}  |  Sharpness: ${nv(s.sharpness)}${s.saturation !== null ? `  |  Saturation: ${nv(s.saturation)}` : ''}  |  Highlights: ${nv(s.highlights)}  |  Shadows: ${nv(s.shadows)}
   Noise Red: ${s.noiseReduction}  |  iDR: ${s.idr}  |  WB: ${s.wb}  |  Capture: ${s.capture}`;
@@ -1549,11 +1566,11 @@ document.getElementById('import-file').addEventListener('change', e => {
       }
       if (!newProfiles && !newPresets) { showToast('Not a valid backup file'); return; }
       if (newProfiles) {
-        profiles = newProfiles.map((p, i) => withDefaultSettings(p, PROFILE_DEFAULTS[i].settings));
+        profiles = newProfiles.map((p, i) => migrateItem(p, PROFILE_DEFAULTS[i].settings));
         saveProfiles(); renderProfiles();
       }
       if (newPresets) {
-        presets = newPresets.map(p => withDefaultSettings(p, p.settings));
+        presets = newPresets.map(p => migrateItem(p, p.settings));
         savePresets(); renderPresets();
       }
       showToast('Backup restored');

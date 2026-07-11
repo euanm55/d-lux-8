@@ -5,8 +5,10 @@
     "subtitle": "Family · travel · streets · general life",
     "settings": {
       "mode": "A",
+      "aperture": "f/2.8",
       "isoMax": "3200",
       "minShutter": "1/250",
+      "expComp": "0 EV",
       "afMode": "AFs",
       "afArea": "Field AF",
       "metering": "Multi-Field",
@@ -30,8 +32,10 @@
     "subtitle": "Active kids · animals · action",
     "settings": {
       "mode": "A",
+      "aperture": "f/2.8",
       "isoMax": "3200",
       "minShutter": "1/500",
+      "expComp": "0 EV",
       "afMode": "AFc",
       "afArea": "Large Field AF",
       "metering": "Multi-Field",
@@ -55,8 +59,10 @@
     "subtitle": "Documentary · strong light · graphic",
     "settings": {
       "mode": "A",
+      "aperture": "f/2.8",
       "isoMax": "6400",
       "minShutter": "1/250",
+      "expComp": "0 EV",
       "afMode": "AFs",
       "afArea": "Field AF",
       "metering": "Multi-Field",
