@@ -224,11 +224,13 @@ input[type=range]::-webkit-slider-thumb {
 .profile-card-name { font-family: 'Instrument Serif', serif; font-size: 18px; }
 .profile-card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .profile-default-tag { font-size: 10px; color: var(--amber); margin-top: 4px; }
-.reset-btn {
+.profile-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; align-items: stretch; }
+.reset-btn, .setdefault-btn {
   font-size: 11px; color: var(--muted); border: 1px solid var(--border); background: none;
   border-radius: 6px; padding: 5px 9px; cursor: pointer; font-family: 'Inter', sans-serif; flex-shrink: 0;
+  white-space: nowrap; text-align: center;
 }
-.reset-btn:active { background: var(--border); }
+.reset-btn:active, .setdefault-btn:active { background: var(--border); }
 .ps-section { padding: 6px 14px; font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); background: var(--bg); border-bottom: 1px solid var(--border); }
 .profile-row { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); gap: 10px; min-height: 46px; }
 .profile-row:last-child { border-bottom: none; }
@@ -321,14 +323,15 @@ input[type=range]::-webkit-slider-thumb {
 }
 .preset-sub-input { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--muted); margin-top: 2px; }
 .preset-name-input:focus, .preset-sub-input:focus { color: var(--text); }
-.preset-actions { display: flex; gap: 8px; margin-top: 10px; }
+.preset-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .load-select {
-  flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  flex: 1 1 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text);
   border-radius: 6px; padding: 7px 9px; font-family: 'Inter', sans-serif; font-size: 12px;
 }
-.reset-preset-btn, .delete-preset-btn {
-  font-size: 11px; color: var(--muted); border: 1px solid var(--border); background: none;
-  border-radius: 6px; padding: 7px 10px; cursor: pointer; font-family: 'Inter', sans-serif; flex-shrink: 0;
+.setdefault-preset-btn, .reset-preset-btn, .delete-preset-btn {
+  flex: 1; font-size: 11px; color: var(--muted); border: 1px solid var(--border); background: none;
+  border-radius: 6px; padding: 7px 10px; cursor: pointer; font-family: 'Inter', sans-serif;
+  white-space: nowrap;
 }
 .confirm-pending { color: #c0392b !important; border-color: #c0392b !important; }
 .presets-empty { font-size: 12px; color: var(--dim); font-style: italic; padding: 20px 0; text-align: center; }
@@ -1305,6 +1308,13 @@ function wireSettingsEvents(container, { findItem, save, onChange }) {
   });
 }
 
+// Prompts for a typed YES before committing the current settings as the new
+// baseline — deliberately higher friction than a tap, since it can't be undone.
+function confirmSetAsDefault(name, apply) {
+  const answer = prompt(`Make the current settings the new default for "${name}"?\n\nThis becomes the baseline that "changed" is measured against, and what Reset restores to. It can't be undone.\n\nType YES to confirm.`);
+  if (answer && answer.trim().toLowerCase() === 'yes') apply();
+}
+
 // Turns a button into a tap-twice-to-confirm control (used for Reset and Delete).
 function wireConfirmButton(btn, confirmLabel, action) {
   const original = btn.textContent;
@@ -1336,7 +1346,10 @@ function renderProfiles() {
         <div class="profile-badge-num">${pi + 1}</div>
         <div><div class="profile-card-name">${profile.name}</div><div class="profile-card-sub">${profile.subtitle}</div>${slotTag}</div>
       </div>
-      <button class="reset-btn" data-pi="${pi}">Reset</button>
+      <div class="profile-actions">
+        <button class="setdefault-btn" data-pi="${pi}">Set default</button>
+        <button class="reset-btn" data-pi="${pi}">Reset</button>
+      </div>
     </div>`;
     html += renderSettingsRows(profile.settings, {
       entityId: pi,
@@ -1358,6 +1371,14 @@ function renderProfiles() {
       profiles[pi].settings = JSON.parse(JSON.stringify(profiles[pi].defaultSettings));
       saveProfiles(); renderProfiles(); showToast(`${profiles[pi].name} reset to its default settings`);
     });
+  });
+
+  container.querySelectorAll('.setdefault-btn').forEach(btn => {
+    const pi = +btn.dataset.pi;
+    btn.addEventListener('click', () => confirmSetAsDefault(profiles[pi].name, () => {
+      profiles[pi].defaultSettings = JSON.parse(JSON.stringify(profiles[pi].settings));
+      saveProfiles(); renderProfiles(); showToast(`Saved as ${profiles[pi].name}'s new default`);
+    }));
   });
 }
 
@@ -1383,6 +1404,7 @@ function renderPresets() {
           <option value="">Load into…</option>
           ${loadOptions}
         </select>
+        <button class="setdefault-preset-btn" data-id="${preset.id}">Set default</button>
         <button class="reset-preset-btn" data-id="${preset.id}">Reset</button>
         <button class="delete-preset-btn" data-id="${preset.id}">Delete</button>
       </div>
@@ -1450,6 +1472,18 @@ function renderPresets() {
       }
       e.target.value = '';
       renderPresets();
+    });
+  });
+
+  container.querySelectorAll('.setdefault-preset-btn').forEach(btn => {
+    const id = btn.dataset.id;
+    btn.addEventListener('click', () => {
+      const preset = presets.find(p => p.id === id);
+      if (!preset) return;
+      confirmSetAsDefault(preset.name, () => {
+        preset.defaultSettings = JSON.parse(JSON.stringify(preset.settings));
+        savePresets(); renderPresets(); showToast(`Saved as ${preset.name}'s new default`);
+      });
     });
   });
 
