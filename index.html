@@ -511,34 +511,39 @@ const PROFILE_DEFAULTS = [
 const ADDED_SETTING_DEFAULTS = { aperture:'f/2.8', expComp:'0 EV' };
 
 // ── PROFILE FIELD DEFINITIONS ─────────────────────────────────────────────
+// Field order mirrors the D-Lux 8 Main Menu (pages 1–3). Mode and Aperture aren't
+// in the menu (set on the aperture ring / via the dials), so they sit at the top
+// as the body controls you set first; everything else follows menu order.
 const PROFILE_SECTIONS = [
   { label:'Exposure', fields:[
     { key:'mode',       label:'Mode',        type:'select',  options:['A','S','P','M'] },
     { key:'aperture',   label:'Aperture',    type:'select',  options:['f/1.7','f/2.0','f/2.8','f/4','f/5.6','f/8','f/11','f/16'] },
-    { key:'isoMax',     label:'ISO Max',     type:'select',  options:['800','1600','3200','6400','12800'] },
-    { key:'minShutter', label:'Min Shutter', type:'select',  options:['1/60','1/100','1/125','1/160','1/200','1/250','1/320','1/500','1/1000'] },
-    { key:'expComp',    label:'EV Comp',     type:'select',  options:['-1 EV','-2/3 EV','-1/3 EV','0 EV','+1/3 EV','+2/3 EV','+1 EV'] },
   ]},
   { label:'Focus', fields:[
     { key:'afMode',   label:'AF Mode',   type:'select', options:['AFs','AFc','MF'] },
     { key:'afArea',   label:'AF Area',   type:'select', options:['Field AF','Large Field AF','Zone AF','Spot AF','Face/Eye Detection','Tracking'] },
-    { key:'metering', label:'Metering',  type:'select', options:['Multi-Field','Centre-Weighted','Spot'] },
+  ]},
+  { label:'Metering & ISO', fields:[
+    { key:'metering',   label:'Metering',    type:'select', options:['Multi-Field','Centre-Weighted','Spot'] },
+    { key:'expComp',    label:'EV Comp',     type:'select', options:['-1 EV','-2/3 EV','-1/3 EV','0 EV','+1/3 EV','+2/3 EV','+1 EV'] },
+    { key:'isoMax',     label:'ISO Max',     type:'select', options:['800','1600','3200','6400','12800'] },
+    { key:'minShutter', label:'Min Shutter', type:'select', options:['1/60','1/100','1/125','1/160','1/200','1/250','1/320','1/500','1/1000'] },
   ]},
   { label:'Image', fields:[
+    { key:'wb',             label:'White Bal.', type:'select',  options:['AWB','Cloudy','Daylight','Shade','Tungsten','Fluorescent','Flash'] },
+    { key:'capture',        label:'Capture',    type:'options', options:['DNG + JPG','JPG only'] },
     { key:'filmStyle',      label:'Film Style', type:'select',  options:['Standard','Natural','Vivid','Monochrome','Monochrome HC','Cinelike D2','Cinelike V2'] },
     { key:'contrast',       label:'Contrast',   type:'numeric' },
     { key:'sharpness',      label:'Sharpness',  type:'numeric' },
     { key:'saturation',     label:'Saturation', type:'numeric', hideIfMono:true },
+    { key:'noiseReduction', label:'Noise Red.', type:'options', options:['Low','Standard','High'] },
     { key:'highlights',     label:'Highlights', type:'numeric' },
     { key:'shadows',        label:'Shadows',    type:'numeric' },
-    { key:'noiseReduction', label:'Noise Red.', type:'options', options:['Low','Standard','High'] },
     { key:'idr',            label:'iDR',        type:'options', options:['Off','Low','Auto'] },
   ]},
   { label:'Other', fields:[
-    { key:'wb',          label:'White Bal.',  type:'select', options:['AWB','Cloudy','Daylight','Shade','Tungsten','Fluorescent','Flash'] },
-    { key:'ois',         label:'OIS',         type:'options', options:['On','Off'] },
-    { key:'shutterType', label:'Shutter',     type:'options', options:['Hybrid','Mechanical','Electronic'] },
-    { key:'capture',     label:'Capture',     type:'options', options:['DNG + JPG','JPG only'] },
+    { key:'ois',         label:'OIS',      type:'options', options:['On','Off'] },
+    { key:'shutterType', label:'Shutter',  type:'options', options:['Hybrid','Mechanical','Electronic'] },
   ]},
 ];
 

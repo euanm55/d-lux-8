@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dlux8-v7';
+const CACHE_NAME = 'dlux8-v8';
 const PRECACHE_URLS = [
   './',
   './index.html',
