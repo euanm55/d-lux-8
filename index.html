@@ -457,7 +457,7 @@ input[type=range]::-webkit-slider-thumb {
 <script>
 // Bump this (and CACHE_NAME in sw.js) on every deploy. It's shown in the header
 // so it's obvious at a glance whether the latest build has actually loaded.
-const APP_VERSION = 'v9';
+const APP_VERSION = 'v10';
 
 // ── FEELS ─────────────────────────────────────────────────────────────────
 const FEELS = [
@@ -538,10 +538,10 @@ const PROFILE_SECTIONS = [
     { key:'wb',             label:'White Bal.', type:'select',  options:['AWB','Cloudy','Daylight','Shade','Tungsten','Fluorescent','Flash'] },
     { key:'capture',        label:'Capture',    type:'options', options:['DNG + JPG','JPG only'] },
     { key:'filmStyle',      label:'Film Style', type:'select',  options:['Standard','Natural','Vivid','Monochrome','Monochrome HC','Cinelike D2','Cinelike V2'] },
+    { key:'noiseReduction', label:'Noise Red.', type:'options', options:['Low','Standard','High'] },
     { key:'contrast',       label:'Contrast',   type:'numeric' },
     { key:'sharpness',      label:'Sharpness',  type:'numeric' },
     { key:'saturation',     label:'Saturation', type:'numeric', hideIfMono:true },
-    { key:'noiseReduction', label:'Noise Red.', type:'options', options:['Low','Standard','High'] },
     { key:'highlights',     label:'Highlights', type:'numeric' },
     { key:'shadows',        label:'Shadows',    type:'numeric' },
     { key:'idr',            label:'iDR',        type:'options', options:['Off','Low','Auto'] },
